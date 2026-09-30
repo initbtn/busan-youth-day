@@ -23,10 +23,12 @@ export interface ParishNotice {
 interface UserContextType {
   user: UserProfile | null;
   setUserProfile: (profile: UserProfile) => void;
-  stamps: string[]; // 획득한 booth id 목록
+  stamps: string[]; // 획득한 공식 booth id 목록
   addStamp: (boothId: string) => boolean;
   hasRewardCoupon: boolean;
   claimReward: () => void;
+  treasures: string[]; // 획득한 쭈양이 보물 ID 목록
+  addTreasure: (treasureId: string) => boolean;
   isLeader: boolean; // 교리교사, 사제, 수도자 등 인솔 권한
   parishNotices: Record<string, ParishNotice>;
   updateParishNotice: (parish: string, content: string) => void;
@@ -54,6 +56,7 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [stamps, setStamps] = useState<string[]>([]);
+  const [treasures, setTreasures] = useState<string[]>([]);
   const [hasRewardCoupon, setHasRewardCoupon] = useState<boolean>(false);
   const [parishNotices, setParishNotices] = useState<Record<string, ParishNotice>>(DEFAULT_NOTICES);
 
@@ -66,6 +69,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const savedUser = localStorage.getItem("byd2026_user");
     const savedStamps = localStorage.getItem("byd2026_stamps");
+    const savedTreasures = localStorage.getItem("byd2026_treasures");
     const savedReward = localStorage.getItem("byd2026_reward");
     const savedNotices = localStorage.getItem("byd2026_parish_notices");
 
@@ -79,6 +83,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     if (savedStamps) {
       try {
         setStamps(JSON.parse(savedStamps));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    if (savedTreasures) {
+      try {
+        setTreasures(JSON.parse(savedTreasures));
       } catch (e) {
         console.error(e);
       }
@@ -108,10 +119,20 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     setStamps(updated);
     localStorage.setItem("byd2026_stamps", JSON.stringify(updated));
 
-    if (updated.length >= 5 && !hasRewardCoupon) {
+    if (updated.length >= 9 && !hasRewardCoupon) {
       setHasRewardCoupon(true);
       localStorage.setItem("byd2026_reward", "true");
     }
+    return true;
+  };
+
+  const addTreasure = (treasureId: string) => {
+    if (treasures.includes(treasureId)) {
+      return false;
+    }
+    const updated = [...treasures, treasureId];
+    setTreasures(updated);
+    localStorage.setItem("byd2026_treasures", JSON.stringify(updated));
     return true;
   };
 
@@ -144,6 +165,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         addStamp,
         hasRewardCoupon,
         claimReward,
+        treasures,
+        addTreasure,
         isLeader,
         parishNotices,
         updateParishNotice,
