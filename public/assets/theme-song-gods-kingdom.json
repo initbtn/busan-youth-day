@@ -1,0 +1,240 @@
+{
+  "title": "하느님 나라에",
+  "subtitle": "천주교부산교구 '2024~2026 청소년·청년의 해' 주제가",
+  "composer": "바오누리",
+  "original_key": "DM7",
+  "tempo": "♩ = 110",
+  "time_signature": "4/4",
+  "structure": [
+    {
+      "section": "A Part",
+      "measures": "1-8",
+      "chords_and_lyrics": [
+        {
+          "measure": 1,
+          "chord": "DM7",
+          "lyrics": "난 찬양하네"
+        },
+        {
+          "measure": 2,
+          "chord": "E7",
+          "lyrics": "그분을"
+        },
+        {
+          "measure": 3,
+          "chord": "C#m7",
+          "lyrics": "오직 감사의 마음을 담아"
+        },
+        {
+          "measure": 4,
+          "chord": "F#7",
+          "lyrics": "주님께 기-"
+        },
+        {
+          "measure": 5,
+          "chord": "DM7",
+          "lyrics": "도하면 이루-"
+        },
+        {
+          "measure": 6,
+          "chord": "E7",
+          "lyrics": "어진다는 마음 만으로-"
+        },
+        {
+          "measure": 7,
+          "chord": "F#m",
+          "lyrics": "(간주)"
+        },
+        {
+          "measure": 8,
+          "chord": "Em A7",
+          "lyrics": "(간주)"
+        }
+      ]
+    },
+    {
+      "section": "A' Part",
+      "measures": "9-16",
+      "chords_and_lyrics": [
+        {
+          "measure": 9,
+          "chord": "DM7",
+          "lyrics": "날 사랑하네"
+        },
+        {
+          "measure": 10,
+          "chord": "E7",
+          "lyrics": "그분은"
+        },
+        {
+          "measure": 11,
+          "chord": "C#m",
+          "lyrics": "나의 못난 모습까지도"
+        },
+        {
+          "measure": 12,
+          "chord": "F#7",
+          "lyrics": "변함없이 난"
+        },
+        {
+          "measure": 13,
+          "chord": "DM7",
+          "lyrics": "행복해 당신"
+        },
+        {
+          "measure": 14,
+          "chord": "E7",
+          "lyrics": "과 함께 한다는 이유로-"
+        },
+        {
+          "measure": 15,
+          "chord": "A",
+          "lyrics": "(Fine)"
+        },
+        {
+          "measure": 16,
+          "chord": "A",
+          "lyrics": "(마무리)"
+        }
+      ]
+    },
+    {
+      "section": "B Part (Chorus)",
+      "measures": "17-24",
+      "chords_and_lyrics": [
+        {
+          "measure": 17,
+          "chord": "D",
+          "lyrics": "때론 시련 유혹 속에서-"
+        },
+        {
+          "measure": 18,
+          "chord": "E7",
+          "lyrics": "무너진 날 돌아볼 때-"
+        },
+        {
+          "measure": 19,
+          "chord": "C#m",
+          "lyrics": "(후렴 연결)"
+        },
+        {
+          "measure": 20,
+          "chord": "F#m",
+          "lyrics": "(후렴 연결)"
+        },
+        {
+          "measure": 21,
+          "chord": "D",
+          "lyrics": "부끄런 내 모습-"
+        },
+        {
+          "measure": 22,
+          "chord": "E7",
+          "lyrics": "보이기 싫어-"
+        },
+        {
+          "measure": 23,
+          "chord": "A",
+          "lyrics": "숨지만-"
+        },
+        {
+          "measure": 24,
+          "chord": "A7",
+          "lyrics": "(브릿지 연결)"
+        }
+      ]
+    },
+    {
+      "section": "Bridge",
+      "measures": "25-32",
+      "chords_and_lyrics": [
+        {
+          "measure": 25,
+          "chord": "D#m7(b5)",
+          "lyrics": "주님께서 이런"
+        },
+        {
+          "measure": 26,
+          "chord": "G#7",
+          "lyrics": "나를 보시고-"
+        },
+        {
+          "measure": 27,
+          "chord": "C#m",
+          "lyrics": "손내밀어 내 손"
+        },
+        {
+          "measure": 28,
+          "chord": "F#7",
+          "lyrics": "잡아 날"
+        },
+        {
+          "measure": 29,
+          "chord": "Bm",
+          "lyrics": "일으켜 세우-"
+        },
+        {
+          "measure": 30,
+          "chord": "E7",
+          "lyrics": "시네 그 크신 사랑으로-"
+        },
+        {
+          "measure": 31,
+          "chord": "A",
+          "lyrics": "(아웃트로 연결)"
+        },
+        {
+          "measure": 32,
+          "chord": "Em A7",
+          "lyrics": "(아웃트로 연결)"
+        }
+      ]
+    },
+    {
+      "section": "Outro & Ending",
+      "measures": "33-40",
+      "chords_and_lyrics": [
+        {
+          "measure": 33,
+          "chord": "Bm",
+          "lyrics": "함께 함에 참"
+        },
+        {
+          "measure": 34,
+          "chord": "E7",
+          "lyrics": "행복하네 하-"
+        },
+        {
+          "measure": 35,
+          "chord": "C#m",
+          "lyrics": "느님 품 안에 난"
+        },
+        {
+          "measure": 36,
+          "chord": "F#7",
+          "lyrics": "(연결)"
+        },
+        {
+          "measure": 37,
+          "chord": "Bm",
+          "lyrics": "함께 가네 하-"
+        },
+        {
+          "measure": 38,
+          "chord": "E7",
+          "lyrics": "느님 나라-에-"
+        },
+        {
+          "measure": 39,
+          "chord": "F#m",
+          "lyrics": "(D.C. 반복)"
+        },
+        {
+          "measure": 40,
+          "chord": "F#m",
+          "lyrics": "하느님 나라에"
+        }
+      ]
+    }
+  ]
+}
