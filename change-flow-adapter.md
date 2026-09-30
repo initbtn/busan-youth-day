@@ -8,7 +8,7 @@
 |---|---|
 | **issue(◦)** | issue-first (1인 프로젝트, GitHub 이슈 연동 또는 로컬 마일스톤 추적) |
 | **마일스톤(◦)** | `MVP-2026-BYD` |
-| **프로젝트(◦)** | 없음 |
+| **프로젝트(◦)** | **3** (owner: `initbtn`, URL: https://github.com/users/initbtn/projects/3) |
 | **착수 표시(◦)** | 켠다 |
 | **worktree(①)** | 메인 작업트리 또는 기능별 브랜치 |
 | **토큰(⓪⑤⑥⑧)** | pass show github/gh-token (WARM 상태 필요) |
