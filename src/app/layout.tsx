@@ -14,7 +14,7 @@ const geistMono = localFont({
 });
 
 export const viewport: Viewport = {
-  themeColor: "#2563EB",
+  themeColor: "#F97316",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -22,39 +22,40 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "2026 부산교구 젊은이의 날 (BYD) - 디지털 순례 앱",
-  description: "지금 여기, 주님이 함께! 2026 부산교구 젊은이의 날 스탬프 투어 및 영적 순례 가이드",
-  manifest: "/manifest.json",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "BYD 2026",
-  },
+  title: "쭈양이 꾹",
+  description: "스포원파크 부스 QR 스캔하고 현장 굿즈 교환받자! 🍞🐟",
+  metadataBase: new URL("https://byd2026.catb.kr"),
+
   openGraph: {
-    title: "2026 부산교구 젊은이의 날 (BYD)",
-    description: "지금 여기, 주님이 함께! 2026 BYD 디지털 순례 나침반 및 스탬프 투어",
-    url: "https://busan-youth-day.vercel.app",
-    siteName: "2026 BYD",
-    images: [
-      {
-        url: "/assets/byd2026_combined_final_vibe_mockup.webp",
-        width: 1200,
-        height: 630,
-        alt: "2026 부산교구 젊은이의 날",
-      },
-    ],
+    title: "쭈양이 꾹 📱",
+    description: "스포원파크 부스 QR 스캔 ➔ 도장 꾹! ➔ 현장 굿즈 교환하기",
+    url: "https://byd2026.catb.kr",
+    siteName: "쭈양이 꾹",
     locale: "ko_KR",
     type: "website",
+    images: [
+      {
+        url: "/assets/og_thumbnail/byd2026_og_thumbnail_pwa_v2.png",
+        width: 1200,
+        height: 630,
+        alt: "BYD 마스코트 쭈양이",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "2026 부산교구 젊은이의 날 (BYD)",
-    description: "지금 여기, 주님이 함께! 2026 BYD 디지털 순례 나침반 및 스탬프 투어",
-    images: ["/assets/byd2026_combined_final_vibe_mockup.webp"],
+    title: "쭈양이 꾹 📱",
+    description: "스포원파크 부스 QR 스캔 ➔ 도장 꾹! ➔ 현장 굿즈 교환하기",
+    images: ["/assets/og_thumbnail/byd2026_og_thumbnail_pwa_v2.png"],
   },
   icons: {
-    icon: "/favicon.ico",
-    apple: "/assets/byd2026_combined_final_vibe_mockup.webp",
+    icon: "/assets/favicon/jjuyang_ggook_favicon_symbol_v2.png",
+    apple: "/assets/favicon/jjuyang_ggook_favicon_symbol_v2.png",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "쭈양이 꾹",
   },
 };
 
@@ -66,14 +67,14 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <head>
-        <link rel="manifest" href="/manifest.json" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <link rel="apple-touch-icon" href="/assets/favicon/jjuyang_ggook_favicon_symbol_v2.png" />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-50 text-slate-900 select-none`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-50 text-slate-900 selection:bg-orange-500 selection:text-white`}
       >
-        {children}
+        <div className="max-w-md mx-auto min-h-screen bg-white shadow-xl relative overflow-x-hidden flex flex-col">
+          {children}
+        </div>
       </body>
     </html>
   );

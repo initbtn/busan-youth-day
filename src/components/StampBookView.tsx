@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import { BOOTHS_DATA, BoothItem } from "@/data/booths";
 import { useUser } from "@/context/UserContext";
 import { QRCameraScanner } from "@/components/QRCameraScanner";
@@ -168,8 +169,14 @@ export function StampBookView() {
 
                 <div className="my-1.5 flex items-center justify-center">
                   {isCollected ? (
-                    <div className="w-11 h-11 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center text-xl shadow-inner font-bold">
-                      🐑
+                    <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center p-1 shadow-inner ring-2 ring-orange-300">
+                      <Image
+                        src="/assets/characters/jjuyang1.png"
+                        alt="쭈양이 도장"
+                        width={38}
+                        height={38}
+                        className="object-contain"
+                      />
                     </div>
                   ) : (
                     <div className="w-10 h-10 rounded-full border-2 border-dashed border-slate-200 flex items-center justify-center text-slate-300">
