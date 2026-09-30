@@ -3,13 +3,13 @@
 import React, { useState, useEffect } from "react";
 import { BOOTHS_DATA, BoothItem } from "@/data/booths";
 import { useUser } from "@/context/UserContext";
-import { QrCode, Gift, MapPin } from "lucide-react";
+import { QRCameraScanner } from "@/components/QRCameraScanner";
+import { QrCode, Gift, MapPin, Camera } from "lucide-react";
 
 export function StampBookView() {
   const { stamps, addStamp, hasRewardCoupon } = useUser();
   const [selectedBooth, setSelectedBooth] = useState<BoothItem | null>(null);
-  const [scanning, setScanning] = useState(false);
-  const [scanInput, setScanInput] = useState("");
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [scanMessage, setScanMessage] = useState<{ text: string; error?: boolean } | null>(null);
 
   // 30초 동적 굿즈 인증 QR 타이머 (Feature Flag 모듈)
@@ -23,29 +23,24 @@ export function StampBookView() {
     return () => clearInterval(interval);
   }, [hasRewardCoupon]);
 
-  const handleSimulateScan = (booth: BoothItem) => {
-    const success = addStamp(booth.id);
-    if (success) {
-      setScanMessage({ text: `[${booth.name}] 스탬프를 획득했습니다!` });
-    } else {
-      setScanMessage({ text: `이미 스탬프를 획득한 부스입니다.`, error: true });
-    }
-    setTimeout(() => setScanMessage(null), 3000);
-  };
-
-  const handleCodeSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleApplyStamp = (qrCodeText: string) => {
     const matched = BOOTHS_DATA.find(
-      (b) => b.qrCode.toLowerCase() === scanInput.trim().toLowerCase()
+      (b) =>
+        b.qrCode.toLowerCase() === qrCodeText.trim().toLowerCase() ||
+        b.id.toLowerCase() === qrCodeText.trim().toLowerCase()
     );
+
     if (matched) {
-      handleSimulateScan(matched);
-      setScanInput("");
-      setScanning(false);
+      const success = addStamp(matched.id);
+      if (success) {
+        setScanMessage({ text: `🎉 [${matched.name}] 스탬프를 획득했습니다!` });
+      } else {
+        setScanMessage({ text: `이미 스탬프를 획득한 부스입니다.`, error: true });
+      }
     } else {
       setScanMessage({ text: "유효하지 않은 부스 QR 코드입니다.", error: true });
-      setTimeout(() => setScanMessage(null), 3000);
     }
+    setTimeout(() => setScanMessage(null), 3500);
   };
 
   const progressPercent = Math.min(100, Math.round((stamps.length / 9) * 100));
@@ -56,8 +51,11 @@ export function StampBookView() {
       <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <h2 className="text-base font-bold text-slate-900">순례 스탬프 투어</h2>
-            <p className="text-xs text-slate-500">7성사 부스 + 일반 부스 총 9개 슬롯</p>
+            <div className="flex items-center space-x-1.5">
+              <span className="text-xl">🐑</span>
+              <h2 className="text-base font-bold text-slate-900">순례 스탬프 투어</h2>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">7성사 부스 + 일반 부스 총 9개 슬롯</p>
           </div>
           <div className="text-right">
             <span className="text-2xl font-black text-blue-600">{stamps.length}</span>
@@ -68,7 +66,7 @@ export function StampBookView() {
         {/* 진행도 게이지 */}
         <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden mb-2">
           <div
-            className="bg-gradient-to-r from-blue-500 to-amber-500 h-full transition-all duration-500"
+            className="bg-gradient-to-r from-blue-500 via-indigo-500 to-amber-500 h-full transition-all duration-500"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
@@ -77,49 +75,22 @@ export function StampBookView() {
           <span>{progressPercent}% 달성</span>
         </div>
 
-        {/* 스캔 버튼 */}
+        {/* 실제 모바일 카메라 QR 스캐너 버튼 */}
         <button
-          onClick={() => setScanning(!scanning)}
-          className="mt-4 w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-2xl text-xs font-semibold flex items-center justify-center space-x-2 shadow-md shadow-blue-100 transition-all"
+          onClick={() => setIsCameraOpen(true)}
+          className="mt-4 w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-2xl text-xs font-bold flex items-center justify-center space-x-2 shadow-lg shadow-blue-200 active:scale-98 transition-all"
         >
-          <QrCode className="w-4 h-4" />
-          <span>부스 현장 QR 코드 스캔하기</span>
+          <Camera className="w-4 h-4" />
+          <span>카메라로 현장 부스 QR 스캔하기</span>
         </button>
-
-        {/* 스캔 입력 / 시뮬레이션 창 */}
-        {scanning && (
-          <form
-            onSubmit={handleCodeSubmit}
-            className="mt-3 p-3 bg-slate-50 rounded-2xl border border-slate-200 animate-in fade-in"
-          >
-            <div className="text-xs font-bold text-slate-700 mb-1.5 flex items-center space-x-1">
-              <span>카메라 QR 스캐너 / 코드 입력</span>
-            </div>
-            <div className="flex space-x-2">
-              <input
-                type="text"
-                placeholder="QR 코드 토큰 입력 (예: BYD2026_FAITH_BAPTISM_01)"
-                value={scanInput}
-                onChange={(e) => setScanInput(e.target.value)}
-                className="flex-1 px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <button
-                type="submit"
-                className="px-4 py-2 bg-blue-600 text-white text-xs font-semibold rounded-xl hover:bg-blue-700"
-              >
-                인증
-              </button>
-            </div>
-          </form>
-        )}
 
         {/* 안내 메시지 */}
         {scanMessage && (
           <div
-            className={`mt-3 p-3 rounded-xl text-xs font-medium ${
+            className={`mt-3 p-3 rounded-2xl text-xs font-semibold animate-in fade-in ${
               scanMessage.error
                 ? "bg-rose-50 text-rose-700 border border-rose-200"
-                : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                : "bg-emerald-50 text-emerald-800 border border-emerald-200"
             }`}
           >
             {scanMessage.text}
@@ -144,7 +115,7 @@ export function StampBookView() {
 
           <div className="bg-white text-slate-900 rounded-2xl p-4 flex flex-col items-center shadow-inner">
             <span className="text-xs font-bold text-slate-500 mb-1">Jjuyang-i 굿즈 교환권</span>
-            <div className="w-36 h-36 bg-slate-100 rounded-xl border border-slate-200 flex flex-col items-center justify-center p-2 relative">
+            <div className="w-36 h-36 bg-slate-50 rounded-xl border border-slate-200 flex flex-col items-center justify-center p-2 relative">
               <QrCode className="w-28 h-28 text-slate-800" />
               <div className="absolute inset-0 flex items-center justify-center opacity-10 font-mono text-[9px] pointer-events-none break-all text-center">
                 DYNAMIC-TOKEN-{couponSeconds}-{Date.now().toString().slice(-4)}
@@ -155,7 +126,7 @@ export function StampBookView() {
                 유효시간: {couponSeconds}초
               </div>
               <p className="text-[10px] text-slate-400 mt-0.5">
-                캡처 공유 방지를 위해 30초마다 토큰이 자동 갱신됩니다.
+                캡처 화면 공유 방지를 위해 30초마다 동적 갱신됩니다.
               </p>
             </div>
           </div>
@@ -227,7 +198,7 @@ export function StampBookView() {
               </div>
               <button
                 onClick={() => setSelectedBooth(null)}
-                className="text-xs font-semibold px-2 py-1 bg-slate-100 rounded-lg text-slate-600"
+                className="text-xs font-semibold px-2.5 py-1 bg-slate-100 rounded-lg text-slate-600"
               >
                 닫기
               </button>
@@ -244,17 +215,24 @@ export function StampBookView() {
             <div className="flex space-x-2">
               <button
                 onClick={() => {
-                  handleSimulateScan(selectedBooth);
+                  handleApplyStamp(selectedBooth.qrCode);
                   setSelectedBooth(null);
                 }}
                 className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-md transition-colors"
               >
-                이 부스 스탬프 획득 (현장 QR 시뮬레이션)
+                이 부스 스탬프 획득 (테스트 인증)
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* 실제 스마트폰 카메라 QR 스캐너 모달 */}
+      <QRCameraScanner
+        isOpen={isCameraOpen}
+        onClose={() => setIsCameraOpen(false)}
+        onScanSuccess={(decodedText) => handleApplyStamp(decodedText)}
+      />
     </div>
   );
 }
