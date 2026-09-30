@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
 import { EVENT_SCHEDULE } from "@/data/schedule";
 import { FullSpiritualViewer } from "@/components/FullSpiritualViewer";
 import { StampBookView } from "@/components/StampBookView";
 import { CommunityFeedView } from "@/components/CommunityFeedView";
+import GymSeatingViewer from "@/components/GymSeatingViewer";
 import { OnboardingModal } from "@/components/OnboardingModal";
 import { useUser } from "@/context/UserContext";
 import {
@@ -19,12 +21,13 @@ import {
   Megaphone,
   Edit3,
   Bus,
+  Sparkles,
 } from "lucide-react";
 
 export function MainAppContainer() {
   const { user, isLeader, parishNotices, updateParishNotice } = useUser();
-  const [activeTab, setActiveTab] = useState<"home" | "stamp" | "feed" | "info">("home");
-  const [spiritualViewer, setSpiritualViewer] = useState<"prayer" | "song" | null>(null);
+  const [activeTab, setActiveTab] = useState<"home" | "stamp" | "feed" | "info" | "seating">("home");
+  const [spiritualViewer, setSpiritualViewer] = useState<"prayer" | "song" | "saints" | null>(null);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState<15 | 16 | 17>(15);
 
@@ -43,30 +46,37 @@ export function MainAppContainer() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-24">
       {/* 최상단 주황색 띠 공지 배너 (목업 Page 6 기반) */}
-      <div className="bg-amber-500 text-white px-4 py-2 text-xs font-semibold flex items-center justify-between shadow-sm">
+      <div className="bg-orange-500 text-white px-4 py-2 text-xs font-semibold flex items-center justify-between shadow-sm">
         <div className="flex items-center space-x-1.5 truncate">
-          <span className="bg-white/20 px-1.5 py-0.5 rounded text-[10px] font-bold">중요</span>
-          <span className="truncate">공식 스탬프는 행사장 4대 테마존 부스에서만 획득 가능합니다.</span>
+          <span className="bg-white/20 px-1.5 py-0.5 rounded text-[10px] font-bold">공식</span>
+          <span className="truncate">스포원파크 부스 QR 스캔하고 현장 굿즈 교환받자! 🍞🐟</span>
         </div>
         <button
-          onClick={() => setActiveTab("info")}
-          className="text-[11px] underline font-bold flex-shrink-0 ml-2"
+          onClick={() => setActiveTab("seating")}
+          className="text-[11px] underline font-bold flex-shrink-0 ml-2 bg-black/10 px-2 py-0.5 rounded-full"
         >
-          안내
+          좌석배치
         </button>
       </div>
 
       {/* 헤더 바 */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-100 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center space-x-2.5">
-          <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-black text-sm shadow-md shadow-blue-200">
-            BYD
+          <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-500 text-white flex items-center justify-center font-black text-sm shadow-md shadow-orange-200">
+            <Image
+              src="/assets/characters/jjuyang1.png"
+              alt="쭈양이"
+              width={32}
+              height={32}
+              className="object-contain"
+            />
           </div>
           <div>
-            <h1 className="text-sm font-bold text-slate-900 leading-tight">
-              2026 부산교구 젊은이의 날
+            <h1 className="text-sm font-black text-slate-900 leading-tight flex items-center space-x-1">
+              <span>쭈양이 꾹</span>
+              <span className="text-[10px] font-bold text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded">2026 BYD</span>
             </h1>
-            <p className="text-[10px] text-blue-600 font-semibold">디지털 순례 나침반</p>
+            <p className="text-[10px] text-slate-500 font-semibold">스포원파크 디지털 순례 가이드</p>
           </div>
         </div>
 
@@ -74,17 +84,17 @@ export function MainAppContainer() {
         {user ? (
           <button
             onClick={() => setIsOnboardingOpen(true)}
-            className="flex items-center space-x-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full text-xs font-semibold hover:bg-blue-100 transition-colors border border-blue-100"
+            className="flex items-center space-x-1.5 px-3 py-1.5 bg-orange-50 text-orange-700 rounded-full text-xs font-semibold hover:bg-orange-100 transition-colors border border-orange-100"
           >
             <span>{user.name}</span>
-            <span className="text-[10px] bg-blue-600 text-white px-1.5 py-0.5 rounded-full font-bold">
+            <span className="text-[10px] bg-orange-600 text-white px-1.5 py-0.5 rounded-full font-bold">
               {user.groupNumber ? `${user.groupNumber}조` : user.parish}
             </span>
           </button>
         ) : (
           <button
             onClick={() => setIsOnboardingOpen(true)}
-            className="px-3.5 py-1.5 bg-blue-600 text-white rounded-full text-xs font-bold shadow-md hover:bg-blue-700 transition-colors"
+            className="px-3.5 py-1.5 bg-orange-500 text-white rounded-full text-xs font-bold shadow-md hover:bg-orange-600 transition-colors"
           >
             순례 등록하기
           </button>
@@ -92,10 +102,47 @@ export function MainAppContainer() {
       </header>
 
       {/* 메인 뷰 컨텐츠 */}
-      <main className="max-w-md mx-auto p-4 space-y-6">
-        {/* 1. 홈 탭 (타임라인, 전면 악보/기도문 카드, 3-Day 탭, 본당 CMS 공지) */}
+      <main className="max-w-md mx-auto p-4 space-y-5">
+        {/* 1. 홈 탭 (타임라인, 전면 악보/기도문 카드, 3-Day 탭, 본당 CMS 공지, 쭈양이 배너) */}
         {activeTab === "home" && (
           <div className="space-y-5">
+            {/* 공식 마스코트 '쭈양이' 웰컴 카드 */}
+            <div className="bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 rounded-3xl p-5 text-white shadow-md relative overflow-hidden flex items-center justify-between">
+              <div className="space-y-1.5 z-10 max-w-[65%]">
+                <span className="inline-flex items-center space-x-1 text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded-full">
+                  <Sparkles className="w-3 h-3 text-amber-200" />
+                  <span>공식 마스코트 쭈양이</span>
+                </span>
+                <h2 className="text-lg font-black leading-tight">지금 여기, 주님이 함께!</h2>
+                <p className="text-[11px] text-orange-100 leading-snug">
+                  4대 테마존 부스에서 QR 스탬프 꾹! 도장을 모아 한정판 굿즈를 교환받으세요.
+                </p>
+                <div className="pt-1 flex items-center space-x-2">
+                  <button
+                    onClick={() => setActiveTab("seating")}
+                    className="px-3 py-1.5 bg-white text-orange-600 text-xs font-bold rounded-xl shadow-xs hover:bg-orange-50 transition-colors"
+                  >
+                    체육관 좌석 확인
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("stamp")}
+                    className="px-3 py-1.5 bg-black/20 text-white text-xs font-bold rounded-xl hover:bg-black/30 transition-colors"
+                  >
+                    스탬프 북 ➔
+                  </button>
+                </div>
+              </div>
+              <div className="relative w-28 h-28 flex-shrink-0 -mr-2">
+                <Image
+                  src="/assets/characters/jjuyang1.png"
+                  alt="쭈양이 마스코트"
+                  fill
+                  className="object-contain drop-shadow-md"
+                  priority
+                />
+              </div>
+            </div>
+
             {/* 본당 공지사항 카드 (참가자 맞춤 + 교리교사/사제/수도자 CMS 작성) */}
             <div className="bg-gradient-to-br from-indigo-50 via-blue-50 to-white rounded-3xl p-5 border border-blue-100 shadow-sm space-y-3">
               <div className="flex items-center justify-between">
@@ -166,7 +213,7 @@ export function MainAppContainer() {
                   onClick={() => setSelectedDay(15)}
                   className={`py-2 px-3 rounded-2xl transition-all border ${
                     selectedDay === 15
-                      ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-100 scale-102"
+                      ? "bg-orange-500 text-white border-orange-500 shadow-md shadow-orange-100 scale-102"
                       : "bg-slate-50 text-slate-700 border-slate-100 hover:bg-slate-100"
                   }`}
                 >
@@ -179,20 +226,20 @@ export function MainAppContainer() {
                   onClick={() => setSelectedDay(16)}
                   className={`py-2 px-3 rounded-2xl transition-all border ${
                     selectedDay === 16
-                      ? "bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-100 scale-102"
+                      ? "bg-orange-500 text-white border-orange-500 shadow-md shadow-orange-100 scale-102"
                       : "bg-slate-50 text-slate-700 border-slate-100 hover:bg-slate-100"
                   }`}
                 >
-                  <span className="text-[10px] block font-medium opacity-80">영적준비</span>
-                  <span className="text-lg font-black block">묵주기도</span>
-                  <span className="text-[10px] block opacity-80">(상시)</span>
+                  <span className="text-[10px] block font-medium opacity-80">사목주간</span>
+                  <span className="text-lg font-black block">Youth</span>
+                  <span className="text-[10px] block opacity-80">(부산교구)</span>
                 </button>
 
                 <button
                   onClick={() => setSelectedDay(17)}
                   className={`py-2 px-3 rounded-2xl transition-all border ${
                     selectedDay === 17
-                      ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100 scale-102"
+                      ? "bg-orange-500 text-white border-orange-500 shadow-md shadow-orange-100 scale-102"
                       : "bg-slate-50 text-slate-700 border-slate-100 hover:bg-slate-100"
                   }`}
                 >
@@ -203,43 +250,44 @@ export function MainAppContainer() {
               </div>
             </div>
 
-            {/* 영적 카드 2종: 전면 고화질 이미지 뷰어 연결 (기획서 Page 6 반영) */}
+            {/* 영적 카드 3종: 전면 고화질 상본/악보/수호성인 뷰어 연결 (기획서 Page 6 반영) */}
             <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold text-slate-500">WYD 기도 & 악보 (전면 뷰어)</h3>
-                <span className="text-[10px] text-blue-600 font-semibold">고화질 핀치줌 지원</span>
+                <h3 className="text-xs font-bold text-slate-500">2027 WYD 영적 순례 자료</h3>
+                <span className="text-[10px] text-orange-600 font-semibold">전면 고화질 뷰어</span>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-2">
                 <div
                   onClick={() => setSpiritualViewer("prayer")}
-                  className="cursor-pointer bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-2xl p-4 shadow-md shadow-blue-100 hover:shadow-lg transition-all flex flex-col justify-between"
+                  className="cursor-pointer bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-2xl p-3 shadow-md shadow-blue-100 hover:shadow-lg transition-all flex flex-col justify-between"
                 >
-                  <div className="flex justify-between items-start mb-4">
-                    <span className="text-2xl">📜</span>
-                    <span className="text-[9px] font-bold px-2 py-0.5 bg-white/20 rounded-full">
-                      공식 기도문
-                    </span>
-                  </div>
+                  <span className="text-xl mb-3">📜</span>
                   <div>
-                    <h4 className="text-sm font-bold">2027 WYD 공식 기도</h4>
-                    <p className="text-[10px] text-blue-100/90 mt-0.5">전면 고화질 뷰어로 읽기</p>
+                    <h4 className="text-xs font-bold leading-tight">WYD 공식 기도</h4>
+                    <p className="text-[9px] text-blue-100/90 mt-0.5">상본 앞/뒤</p>
+                  </div>
+                </div>
+
+                <div
+                  onClick={() => setSpiritualViewer("saints")}
+                  className="cursor-pointer bg-gradient-to-br from-orange-500 to-rose-500 text-white rounded-2xl p-3 shadow-md shadow-orange-100 hover:shadow-lg transition-all flex flex-col justify-between"
+                >
+                  <span className="text-xl mb-3">🕊️</span>
+                  <div>
+                    <h4 className="text-xs font-bold leading-tight">수호성인 5인</h4>
+                    <p className="text-[9px] text-orange-100/90 mt-0.5">소개 & 기도</p>
                   </div>
                 </div>
 
                 <div
                   onClick={() => setSpiritualViewer("song")}
-                  className="cursor-pointer bg-gradient-to-br from-amber-500 to-orange-500 text-white rounded-2xl p-4 shadow-md shadow-amber-100 hover:shadow-lg transition-all flex flex-col justify-between"
+                  className="cursor-pointer bg-gradient-to-br from-amber-500 to-yellow-600 text-white rounded-2xl p-3 shadow-md shadow-amber-100 hover:shadow-lg transition-all flex flex-col justify-between"
                 >
-                  <div className="flex justify-between items-start mb-4">
-                    <span className="text-2xl">🎵</span>
-                    <span className="text-[9px] font-bold px-2 py-0.5 bg-white/20 rounded-full">
-                      공식 악보
-                    </span>
-                  </div>
+                  <span className="text-xl mb-3">🎵</span>
                   <div>
-                    <h4 className="text-sm font-bold">하느님 나라에</h4>
-                    <p className="text-[10px] text-amber-100/90 mt-0.5">전체 악보 & 코드 뷰어</p>
+                    <h4 className="text-xs font-bold leading-tight">하느님 나라에</h4>
+                    <p className="text-[9px] text-amber-100/90 mt-0.5">공식 악보</p>
                   </div>
                 </div>
               </div>
@@ -249,7 +297,7 @@ export function MainAppContainer() {
             <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center space-x-2">
-                  <Calendar className="w-4 h-4 text-blue-600" />
+                  <Calendar className="w-4 h-4 text-orange-500" />
                   <h3 className="text-sm font-bold text-slate-900">본대회 타임라인</h3>
                 </div>
                 <span className="text-[11px] text-slate-400 font-medium">스포원파크</span>
@@ -278,7 +326,7 @@ export function MainAppContainer() {
                         </span>
                         <span
                           className={`font-bold ${
-                            item.isImportant ? "text-blue-900" : "text-slate-800"
+                            item.isImportant ? "text-orange-950 font-black" : "text-slate-800"
                           }`}
                         >
                           {item.title}
@@ -300,16 +348,44 @@ export function MainAppContainer() {
         {/* 2. 스탬프 북 탭 */}
         {activeTab === "stamp" && <StampBookView />}
 
-        {/* 3. 커뮤니티 피드 탭 */}
+        {/* 3. 실내체육관 좌석배치도 탭 (신규) */}
+        {activeTab === "seating" && <GymSeatingViewer />}
+
+        {/* 4. 커뮤니티 피드 탭 */}
         {activeTab === "feed" && <CommunityFeedView />}
 
-        {/* 4. 안내 탭 (공문 G26-146 세부 약도 및 셔틀/주차 탑승지 안내) */}
+        {/* 5. 안내 탭 (공문 G26-146 세부 약도 및 셔틀/주차 탑승지 안내) */}
         {activeTab === "info" && (
           <div className="space-y-5 text-xs leading-relaxed">
+            {/* 행사장 3대 구역 안내 카드 (공문 2페이지) */}
+            <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm space-y-3">
+              <span className="text-xs font-bold text-slate-500 block">스포원파크 행사장 3대 구역</span>
+              <div className="grid grid-cols-1 gap-2.5">
+                <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-2xl">
+                  <span className="font-bold text-blue-900 text-xs">A구역 · 야외 분수광장</span>
+                  <p className="text-[11px] text-slate-600 mt-1">
+                    축제 부스 체험(믿음·희망·사랑·나눔), 09:00~14:00 본당 대표자 접수 및 패키지 수령처
+                  </p>
+                </div>
+                <div className="p-3 bg-amber-50/70 border border-amber-100 rounded-2xl">
+                  <span className="font-bold text-amber-900 text-xs">B구역 · 실내체육관</span>
+                  <p className="text-[11px] text-slate-600 mt-1">
+                    실내공연(13:00~15:30 자유석), 지성소 침묵/찬양 기도(1F 문화홀), BYD 파견미사(15:30 착석, 16:30 미사)
+                  </p>
+                </div>
+                <div className="p-3 bg-emerald-50/70 border border-emerald-100 rounded-2xl">
+                  <span className="font-bold text-emerald-900 text-xs">C구역 · 가족공원 야외무대</span>
+                  <p className="text-[11px] text-slate-600 mt-1">
+                    상설 고해소(13:30~15:30 운영), 야외 버스킹 및 문화공연
+                  </p>
+                </div>
+              </div>
+            </div>
+
             {/* 셔틀버스 상세 운행 & 탑승 약도 카드 */}
             <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm space-y-4">
               <div className="flex items-center space-x-2 font-bold text-slate-900 text-sm">
-                <Bus className="w-4 h-4 text-blue-600" />
+                <Bus className="w-4 h-4 text-orange-600" />
                 <span>BYD 셔틀버스 운행 & 상세 탑승지 약도</span>
               </div>
 
@@ -370,22 +446,27 @@ export function MainAppContainer() {
                 <li>파견미사는 15:30부터 본당별 지정 좌석으로 운영되며, 15:55까지 착석 완료해야 합니다.</li>
               </ul>
             </div>
-
-            {/* 필수 저작권 표기 (기획서 Page 11) */}
-            <div className="text-center p-4 bg-slate-100 rounded-2xl text-[11px] text-slate-500 font-medium">
-              © 부산교구 청소년사목국 · 2026 BYD
-            </div>
           </div>
         )}
+
+        {/* 6. 공통 하단 필수 저작권 표기 (컴플라이언스 규정 준수) */}
+        <footer className="pt-4 pb-2 text-center space-y-1">
+          <p className="text-[11px] font-bold text-slate-500">
+            ⓒ 부산교구 청소년사목국 · 2026 BYD
+          </p>
+          <p className="text-[9px] text-slate-400">
+            공식 마스코트 쭈양이(JJUYANG!) · 문의: purunnamu@catb.kr
+          </p>
+        </footer>
       </main>
 
       {/* 하단 고정 네비게이션 바 */}
-      <nav className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 py-2 px-6">
-        <div className="max-w-md mx-auto flex items-center justify-between">
+      <nav className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 py-2 px-3">
+        <div className="max-w-md mx-auto grid grid-cols-5 text-center">
           <button
             onClick={() => setActiveTab("home")}
-            className={`flex flex-col items-center space-y-1 text-xs font-semibold transition-colors ${
-              activeTab === "home" ? "text-blue-600" : "text-slate-400 hover:text-slate-600"
+            className={`flex flex-col items-center space-y-1 text-[11px] font-semibold transition-colors ${
+              activeTab === "home" ? "text-orange-600" : "text-slate-400 hover:text-slate-600"
             }`}
           >
             <Compass className="w-5 h-5" />
@@ -394,32 +475,45 @@ export function MainAppContainer() {
 
           <button
             onClick={() => setActiveTab("stamp")}
-            className={`flex flex-col items-center space-y-1 text-xs font-semibold transition-colors relative ${
-              activeTab === "stamp" ? "text-blue-600" : "text-slate-400 hover:text-slate-600"
+            className={`flex flex-col items-center space-y-1 text-[11px] font-semibold transition-colors ${
+              activeTab === "stamp" ? "text-orange-600" : "text-slate-400 hover:text-slate-600"
             }`}
           >
             <QrCode className="w-5 h-5" />
-            <span>스탬프 북</span>
+            <span>스탬프</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("seating")}
+            className={`flex flex-col items-center space-y-1 text-[11px] font-semibold transition-colors relative ${
+              activeTab === "seating" ? "text-orange-600" : "text-slate-400 hover:text-slate-600"
+            }`}
+          >
+            <div className="relative">
+              <MapPin className="w-5 h-5" />
+              <span className="absolute -top-1 -right-1 w-2 h-2 bg-orange-500 rounded-full animate-pulse" />
+            </div>
+            <span>미사좌석</span>
           </button>
 
           <button
             onClick={() => setActiveTab("feed")}
-            className={`flex flex-col items-center space-y-1 text-xs font-semibold transition-colors ${
-              activeTab === "feed" ? "text-blue-600" : "text-slate-400 hover:text-slate-600"
+            className={`flex flex-col items-center space-y-1 text-[11px] font-semibold transition-colors ${
+              activeTab === "feed" ? "text-orange-600" : "text-slate-400 hover:text-slate-600"
             }`}
           >
             <Users className="w-5 h-5" />
-            <span>소통 피드</span>
+            <span>소통피드</span>
           </button>
 
           <button
             onClick={() => setActiveTab("info")}
-            className={`flex flex-col items-center space-y-1 text-xs font-semibold transition-colors ${
-              activeTab === "info" ? "text-blue-600" : "text-slate-400 hover:text-slate-600"
+            className={`flex flex-col items-center space-y-1 text-[11px] font-semibold transition-colors ${
+              activeTab === "info" ? "text-orange-600" : "text-slate-400 hover:text-slate-600"
             }`}
           >
             <Info className="w-5 h-5" />
-            <span>행사 안내</span>
+            <span>안내</span>
           </button>
         </div>
       </nav>
