@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import Image from "next/image";
-import { Heart, MessageSquare, Camera, Flag, Sparkles } from "lucide-react";
+import React, { useState, useRef } from "react";
+import { Heart, MessageSquare, Camera, Flag, Sparkles, X, Upload } from "lucide-react";
 import { useUser } from "@/context/UserContext";
 
 interface CommunityPost {
@@ -53,7 +52,10 @@ export function CommunityFeedView() {
   const { user } = useUser();
   const [posts, setPosts] = useState<CommunityPost[]>(INITIAL_POSTS);
   const [newContent, setNewContent] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isPosting, setIsPosting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleLike = (id: string) => {
     setPosts((prev) =>
@@ -69,33 +71,78 @@ export function CommunityFeedView() {
     );
   };
 
-  const handleCreatePost = (e: React.FormEvent) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // 최대 10MB 검증
+    if (file.size > 10 * 1024 * 1024) {
+      alert("파일 크기는 10MB 이하여야 합니다.");
+      return;
+    }
+
+    setSelectedFile(file);
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewUrl(objectUrl);
+  };
+
+  const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newContent.trim()) return;
 
     setIsPosting(true);
+    let uploadedImageUrl = previewUrl || undefined;
+
+    // R2 업로드 API 시도
+    if (selectedFile) {
+      try {
+        const presignedRes = await fetch("/api/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fileName: selectedFile.name,
+            contentType: selectedFile.type,
+          }),
+        });
+
+        if (presignedRes.ok) {
+          const { uploadUrl, publicUrl } = await presignedRes.json();
+          // S3 직업로드
+          await fetch(uploadUrl, {
+            method: "PUT",
+            headers: { "Content-Type": selectedFile.type },
+            body: selectedFile,
+          });
+          uploadedImageUrl = publicUrl;
+        }
+      } catch (err) {
+        console.warn("R2 upload fallback to preview", err);
+      }
+    }
+
     const newPost: CommunityPost = {
       id: "post-" + Date.now(),
       author: user?.name || "익명의 순례자",
       parish: user?.parish || "하단",
       role: user?.role || "청년",
       content: newContent,
+      imageUrl: uploadedImageUrl,
       likes: 1,
       timeAgo: "방금 전",
       isLiked: true,
     };
 
-    setTimeout(() => {
-      setPosts([newPost, ...posts]);
-      setNewContent("");
-      setIsPosting(false);
-    }, 400);
+    setPosts([newPost, ...posts]);
+    setNewContent("");
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    setIsPosting(false);
   };
 
   return (
     <div className="space-y-6">
       {/* 상단 해시태그 & 배너 */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-3xl p-5 shadow-sm">
+      <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white rounded-3xl p-5 shadow-sm">
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center space-x-1.5">
@@ -135,18 +182,48 @@ export function CommunityFeedView() {
           className="w-full text-xs p-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
         />
 
-        <div className="flex justify-between items-center pt-1">
-          <div className="flex items-center space-x-1 text-slate-400 text-xs">
-            <Camera className="w-4 h-4" />
-            <span className="text-[11px]">Cloudflare R2 스토리지 연동 준비</span>
+        {/* 선택한 이미지 미리보기 */}
+        {previewUrl && (
+          <div className="relative w-full aspect-video rounded-2xl overflow-hidden border border-slate-200">
+            <img src={previewUrl} alt="선택한 사진 미리보기" className="w-full h-full object-cover" />
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedFile(null);
+                setPreviewUrl(null);
+              }}
+              className="absolute top-2 right-2 p-1 bg-black/60 text-white rounded-full hover:bg-black/80"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
           </div>
+        )}
+
+        <div className="flex justify-between items-center pt-1">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept="image/*"
+            className="hidden"
+          />
+
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center space-x-1.5 text-blue-600 hover:text-blue-700 text-xs font-bold bg-blue-50 px-3 py-1.5 rounded-xl transition-colors"
+          >
+            <Camera className="w-4 h-4" />
+            <span>사진 첨부</span>
+          </button>
 
           <button
             type="submit"
             disabled={isPosting || !newContent.trim()}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-semibold shadow-sm transition-all"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center space-x-1"
           >
-            {isPosting ? "등록 중..." : "게시하기"}
+            <Upload className="w-3.5 h-3.5" />
+            <span>{isPosting ? "업로드 중..." : "게시하기"}</span>
           </button>
         </div>
       </form>
@@ -182,11 +259,10 @@ export function CommunityFeedView() {
             {/* 이미지 (선택) */}
             {post.imageUrl && (
               <div className="relative w-full aspect-video bg-slate-100">
-                <Image
+                <img
                   src={post.imageUrl}
                   alt="순례 인증샷"
-                  fill
-                  className="object-cover"
+                  className="w-full h-full object-cover"
                 />
               </div>
             )}
