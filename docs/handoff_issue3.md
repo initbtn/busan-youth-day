@@ -25,7 +25,11 @@
    - `next.config.mjs`에 `Cache-Control: public, max-age=31536000, immutable` 및 R2 도메인 `remotePatterns` 등록
 6. **디자인 목업 1:1 완벽 정렬**:
    - `design/byd2026_combined_final_vibe_mockup.webp` 및 `byd2026_exact_source_based_ui_summary.webp` 기반 쭈양이 캐릭터, 3-Day 날짜 탭, 스포원파크 4대 테마존 맵 뷰 정밀 반영
-7. **빌드 검증 & PR 머지 & 배포**:
+7. **SEO 최적화 & OpenGraph SNS 공유 썸네일 & 파비콘**:
+   - 카카오톡/인스타그램/X 링크 공유 시 표시되는 OpenGraph (`og:image`, `og:title`, `og:description`) 메타데이터 등록
+   - `public/assets/byd2026_combined_final_vibe_mockup.webp`를 OG 대표 썸네일로 연결
+   - 쭈양이 캐릭터 기반 파비콘 및 애플 터치 아이콘(`apple-touch-icon.png`, `favicon.ico`) 적용
+8. **빌드 검증 & PR 머지 & 배포**:
    - `npm run build` 통과 확인 → PR 생성 (`closes #3`) → [사람 머지 게이트] → Vercel 재배포 완료
 
 ---
