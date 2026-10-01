@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { EVENT_SCHEDULE } from "@/data/schedule";
 import { FullSpiritualViewer } from "@/components/FullSpiritualViewer";
@@ -30,6 +30,14 @@ export function MainAppContainer() {
   const [spiritualViewer, setSpiritualViewer] = useState<"prayer" | "song" | "saints" | null>(null);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState<15 | 16 | 17>(15);
+
+  // 최초 방문 시(유저 미등록) 온보딩 모달 자동 오픈
+  useEffect(() => {
+    const savedUser = localStorage.getItem("byd2026_user");
+    if (!savedUser && !user) {
+      setIsOnboardingOpen(true);
+    }
+  }, [user]);
 
   // 본당 CMS 공지 작성 상태
   const userParish = user?.parish || "하단";
