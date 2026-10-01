@@ -32,7 +32,7 @@
         path: "{{ project_root }}/.env.local"
       register: env_local_stat
 
-    - name: 2-1. .env.local 부재 시 중단
+    - name: 2-1. .env.local 부재 시 중단 (Fail-Fast)
       ansible.builtin.fail:
         msg: "프로젝트 루트에 .env.local 파일이 없습니다. 시크릿 원천 파일을 확인하세요."
       when: not env_local_stat.stat.exists
@@ -78,7 +78,16 @@
           - name: "R2_BUCKET_NAME"
             type: "secret"
 
-    - name: 5. Vercel 환경변수 일괄 멱등성 주입 (npx vercel env add)
+    - name: 4-1. 필수 환경변수 누락 여부 검사 (Fail-Fast)
+      ansible.builtin.set_fact:
+        missing_env_vars: "{{ sync_specs | map(attribute='name') | difference(env_vars.keys()) | list }}"
+
+    - name: 4-2. 필수 환경변수 누락 시 즉시 중단
+      ansible.builtin.fail:
+        msg: "필수 환경변수가 .env.local 에 누락되어 동기화를 중단합니다: {{ missing_env_vars | join(', ') }}"
+      when: missing_env_vars | length > 0
+
+    - name: 5. Vercel 환경변수 일괄 선언적 주입 (npx vercel env add)
       ansible.builtin.command: >
         npx vercel env add {{ item.name }} {{ target_environments }}
         --value "{{ env_vars[item.name] }}"
@@ -90,26 +99,21 @@
       args:
         chdir: "{{ project_root }}"
       loop: "{{ sync_specs }}"
-      when: item.name in env_vars
       register: sync_results
-      changed_when: "'Created' in sync_results.stdout or 'Updated' in sync_results.stdout or sync_results.rc == 0"
+      changed_when: >
+        'Overrode' in sync_results.stdout or
+        'Added' in sync_results.stdout or
+        'Created' in sync_results.stdout or
+        'Updated' in sync_results.stdout
       no_log: true
 
-    - name: 6. Vercel 프로젝트 현재 환경변수 목록 확인
-      ansible.builtin.command: >
-        npx vercel env ls --scope {{ vercel_scope }} --token "{{ vercel_token }}"
-      args:
-        chdir: "{{ project_root }}"
-      register: vercel_env_ls
-      changed_when: false
-      no_log: true
-
-    - name: 7. 동기화 완료 요약 출력
+    - name: 6. 동기화 완료 요약 출력
       ansible.builtin.debug:
         msg:
           - "============================================================"
           - "✅ Vercel 환경변수 선언적 동기화 완료 (Scope: {{ vercel_scope }})"
           - "------------------------------------------------------------"
-          - "동기화된 변수 건수: {{ sync_specs | length }} 건"
+          - "검증된 필수 변수: {{ sync_specs | length }} 건"
+          - "실제 반영된 변수: {{ sync_results.results | length }} 건 (신규/갱신: {{ sync_results.results | selectattr('changed') | list | length }} 건)"
           - "적용 대상 환경: {{ target_environments }}"
           - "============================================================"

@@ -39,6 +39,9 @@ env-pull: ## Vercel 개발 환경변수를 로컬 .env.local 로 풀 (백업 선
 	@echo -e "$(CYAN)→ Vercel 환경변수 로컬 동기화 (.env.local.bak 생성)...$(RESET)"
 	@[ -f .env.local ] && cp .env.local .env.local.bak || true
 	@export VERCEL_TOKEN="$$(pass show vercel.com/token-jsconn 2>/dev/null | head -n 1 | tr -d '\r\n')"; \
+	if [ -z "$$VERCEL_TOKEN" ]; then \
+		echo -e "$(RED)⛔ Vercel 토큰 조회 실패 (pass show vercel.com/token-jsconn)$(RESET)"; exit 1; \
+	fi; \
 	npx vercel env pull .env.local --yes --scope jsconn --token "$$VERCEL_TOKEN"
 
 # ------------------------------------------------------------------------------

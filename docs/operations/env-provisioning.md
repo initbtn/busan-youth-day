@@ -1,6 +1,6 @@
 # 2026 부산교구 젊은이의 날 (BYD) — 환경변수 프로비저닝 운영 가이드
 
-- **문서 버전**: 1.0.0
+- **문서 버전**: 1.1.0
 - **작성 일자**: 2026-10-01
 - **적용 대상**: `initbtn/busan-youth-day`
 - **연관 이슈**: [#15 (chore: Ansible 및 Makefile 기반 Vercel 환경변수 자동 프로비저닝 프로세스 구축)](https://github.com/initbtn/busan-youth-day/issues/15)
@@ -12,9 +12,10 @@
 본 문서는 `busan-youth-day` 프로젝트의 외부 서비스(Supabase, Cloudflare R2, Vercel) 환경변수 및 민감 시크릿을 **수동 콘솔 조작 없이, 코드형 인프라(Ansible)와 표준 Makefile 인터페이스를 통해 안전하고 멱등성(Idempotency) 있게 프로비저닝하는 절차**를 정의합니다.
 
 ### 핵심 목표
-1. **멱등성 보장**: 반복 실행하더라도 동일한 환경변수 상태가 보장됨 (`--force --yes`).
-2. **시크릿 평문 노출 방지**: 비밀번호 관리자(`pass`) 연동 및 Ansible `no_log: true` 정책으로 터미널 콘솔/로그에 평문 노출 차단.
-3. **단일 명령 인터페이스**: 복잡한 CLI 인자 조립 없이 `make env-sync-vercel`, `make env-check` 단일 타겟으로 실행.
+1. **멱등성 및 선언적 관리**: 반복 실행하더라도 동일한 환경변수 상태가 보장됨 (`--force --yes`).
+2. **Fail-Fast 무결성**: 8대 필수 환경변수 중 하나라도 누락 시 조기 중단(Fail-Fast)하여 불완전 배포를 원천 차단.
+3. **시크릿 평문 노출 방지**: 비밀번호 관리자(`pass`) 연동 및 Ansible `no_log: true` 정책으로 터미널 콘솔/로그에 평문 노출 차단.
+4. **단일 명령 인터페이스**: 복잡한 CLI 인자 조립 없이 `make env-sync-vercel`, `make env-check`, `make env-pull` 단일 타겟으로 실행.
 
 ---
 
@@ -57,6 +58,7 @@ Next.js 클라이언트 노출 여부 및 Vercel 저장소 유형에 따라 엄�
 ```bash
 make env-check
 ```
+* **사전 검증**: `pass show vercel.com/token-jsconn` 조회가 실패할 경우, 즉시 명확한 오류 메시지와 함께 비영(Non-zero) 종료 코드로 차단됩니다.
 
 ### 4.2 Vercel 환경변수 일괄 멱등성 동기화 (`make env-sync-vercel`)
 로컬 `.env.local` 및 `pass`의 자격증명을 읽어 Vercel 프로덕션/프리뷰/개발 환경에 선언적으로 주입합니다:
@@ -66,14 +68,16 @@ make env-sync-vercel
 * **동작 원리**:
   1. `pass show vercel.com/token-jsconn`에서 Vercel 토큰을 메모리에 로드.
   2. 로컬 `.env.local`에서 8대 키 값을 파싱 (모두 `no_log: true`로 마스킹).
-  3. `npx vercel env add`를 비대화식(`--yes --force`)으로 실행하여 갱신.
-  4. 동기화 완료 후 최종 등록 현황 요약 출력.
+  3. **Fail-Fast 검증**: 8대 필수 키 중 하나라도 `.env.local`에 누락되어 있으면 `ansible.builtin.fail`로 즉시 중단.
+  4. `npx vercel env add`를 비대화식(`--yes --force`)으로 실행하여 선언적 주입.
+  5. 동기화 완료 후 실제 반영/갱신된 건수를 정밀 집계하여 요약 출력.
 
 ### 4.3 Vercel 환경변수 로컬 동기화 (`make env-pull`)
 Vercel에 등록된 최신 개발 환경변수를 로컬 `.env.local`로 다운로드합니다 (기존 파일은 `.env.local.bak`로 자동 백업):
 ```bash
 make env-pull
 ```
+* **보안 및 에러 방어**: 사전 Vercel 토큰 검증 가드가 적용되어 있으며, 기존 파일 덮어쓰기 전 백업을 강제합니다.
 
 ---
 
