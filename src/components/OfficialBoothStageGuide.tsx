@@ -3,15 +3,17 @@
 import React, { useState } from "react";
 import { OFFICIAL_ZONES } from "@/data/officialBooths";
 import { INDOOR_STAGE_PROGRAMS, OUTDOOR_STAGE_PROGRAMS } from "@/data/stageSchedule";
-import { X, Music, Sparkles, Info } from "lucide-react";
+import { KakaoMapView } from "@/components/KakaoMapView";
+import { X, Music, Sparkles, Info, MapPin } from "lucide-react";
 
 interface OfficialBoothStageGuideProps {
   isOpen: boolean;
   onClose: () => void;
+  defaultTab?: "booths" | "stages" | "map";
 }
 
-export function OfficialBoothStageGuide({ isOpen, onClose }: OfficialBoothStageGuideProps) {
-  const [activeTab, setActiveTab] = useState<"booths" | "stages" | "map">("booths");
+export function OfficialBoothStageGuide({ isOpen, onClose, defaultTab = "booths" }: OfficialBoothStageGuideProps) {
+  const [activeTab, setActiveTab] = useState<"booths" | "stages" | "map">(defaultTab);
   const [selectedZone, setSelectedZone] = useState<"faith" | "hope" | "love" | "sharing">("faith");
 
   if (!isOpen) return null;
@@ -216,6 +218,20 @@ export function OfficialBoothStageGuide({ isOpen, onClose }: OfficialBoothStageG
           {/* 3. 배치도 & 접수 안내 탭 */}
           {activeTab === "map" && (
             <div className="space-y-4 text-xs leading-relaxed">
+              {/* 카카오맵 인터랙티브 지도 카드 */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between px-1">
+                  <div className="flex items-center space-x-1.5 font-bold text-slate-900 text-xs">
+                    <MapPin className="w-4 h-4 text-orange-600" />
+                    <span>스포원파크 4대 테마존 & 7성사 부스 지도</span>
+                  </div>
+                  <span className="text-[10px] font-semibold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
+                    카카오맵 연동
+                  </span>
+                </div>
+                <KakaoMapView />
+              </div>
+
               {/* 접수 안내 카드 */}
               <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm space-y-3">
                 <div className="flex items-center space-x-2 text-slate-900 font-bold text-sm">

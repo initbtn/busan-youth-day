@@ -8,6 +8,7 @@ import { StampBookView } from "@/components/StampBookView";
 import { CommunityFeedView } from "@/components/CommunityFeedView";
 import GymSeatingViewer from "@/components/GymSeatingViewer";
 import { OnboardingModal } from "@/components/OnboardingModal";
+import { OfficialBoothStageGuide } from "@/components/OfficialBoothStageGuide";
 import { useUser } from "@/context/UserContext";
 import {
   Calendar,
@@ -22,6 +23,7 @@ import {
   Edit3,
   Bus,
   Sparkles,
+  Map,
 } from "lucide-react";
 
 export function MainAppContainer() {
@@ -29,6 +31,7 @@ export function MainAppContainer() {
   const [activeTab, setActiveTab] = useState<"home" | "stamp" | "feed" | "info" | "seating">("home");
   const [spiritualViewer, setSpiritualViewer] = useState<"prayer" | "song" | "saints" | null>(null);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+  const [isMapGuideOpen, setIsMapGuideOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState<15 | 16 | 17>(15);
 
   // 최초 방문 시(유저 미등록) 온보딩 모달 자동 오픈
@@ -59,12 +62,21 @@ export function MainAppContainer() {
           <span className="bg-white/20 px-1.5 py-0.5 rounded text-[10px] font-bold">공식</span>
           <span className="truncate">스포원파크 부스 QR 스캔하고 현장 굿즈 교환받자! 🍞🐟</span>
         </div>
-        <button
-          onClick={() => setActiveTab("seating")}
-          className="text-[11px] underline font-bold flex-shrink-0 ml-2 bg-black/10 px-2 py-0.5 rounded-full"
-        >
-          좌석배치
-        </button>
+        <div className="flex items-center space-x-1 flex-shrink-0 ml-2">
+          <button
+            onClick={() => setIsMapGuideOpen(true)}
+            className="text-[11px] underline font-bold bg-black/10 px-2 py-0.5 rounded-full flex items-center space-x-0.5"
+          >
+            <Map className="w-3 h-3 inline mr-0.5" />
+            <span>현장지도</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("seating")}
+            className="text-[11px] underline font-bold bg-black/10 px-2 py-0.5 rounded-full"
+          >
+            좌석배치
+          </button>
+        </div>
       </div>
 
       {/* 헤더 바 */}
@@ -127,10 +139,17 @@ export function MainAppContainer() {
                 </p>
                 <div className="pt-1 flex items-center space-x-2">
                   <button
-                    onClick={() => setActiveTab("seating")}
-                    className="px-3 py-1.5 bg-white text-orange-600 text-xs font-bold rounded-xl shadow-xs hover:bg-orange-50 transition-colors"
+                    onClick={() => setIsMapGuideOpen(true)}
+                    className="px-3 py-1.5 bg-white text-orange-600 text-xs font-bold rounded-xl shadow-xs hover:bg-orange-50 transition-colors flex items-center space-x-1"
                   >
-                    체육관 좌석 확인
+                    <MapPin className="w-3.5 h-3.5 text-orange-600" />
+                    <span>현장지도</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("seating")}
+                    className="px-3 py-1.5 bg-white/90 text-orange-700 text-xs font-bold rounded-xl shadow-xs hover:bg-white transition-colors"
+                  >
+                    좌석 확인
                   </button>
                   <button
                     onClick={() => setActiveTab("stamp")}
@@ -526,12 +545,17 @@ export function MainAppContainer() {
         </div>
       </nav>
 
-      {/* 전면 고화질 영적 뷰어 및 온보딩 모달 */}
+      {/* 전면 고화질 영적 뷰어 및 온보딩/지도 모달 */}
       <FullSpiritualViewer
         type={spiritualViewer}
         onClose={() => setSpiritualViewer(null)}
       />
       <OnboardingModal isOpen={isOnboardingOpen} onClose={() => setIsOnboardingOpen(false)} />
+      <OfficialBoothStageGuide
+        isOpen={isMapGuideOpen}
+        onClose={() => setIsMapGuideOpen(false)}
+        defaultTab="map"
+      />
     </div>
   );
 }
