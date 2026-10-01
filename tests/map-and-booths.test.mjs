@@ -133,4 +133,32 @@ describe("Kakao Map & Booth Overlay Integrity (Issue #19)", () => {
       assert.ok(block.boothCount > 0);
     });
   });
+
+  // 5. KakaoMapView 에러 복원력 및 폴백 안내 규약 검증
+  test("DoD 5: KakaoMapView 로드 실패 및 에러 상태 대응 계약 검증", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const viewPath = path.join(process.cwd(), "src/components/KakaoMapView.tsx");
+    assert.ok(fs.existsSync(viewPath));
+    const content = fs.readFileSync(viewPath, "utf-8");
+
+    // 1. 에러 상태(loadError) 및 안내 폴백 블록이 존재하는지
+    assert.ok(content.includes("loadError"), "loadError 상태 관리가 있어야 합니다.");
+    assert.ok(content.includes("AlertCircle"), "에러 알림 아이콘이 렌더링되어야 합니다.");
+
+    // 2. 카카오 SDK 로더 스크립트 태그 속성 계약
+    assert.ok(content.includes("kakao-map-sdk"), "SDK 스크립트 id 계약(kakao-map-sdk)이 유지되어야 합니다.");
+    assert.ok(content.includes("autoload=false"), "비동기 초기화를 위한 autoload=false 플래그가 있어야 합니다.");
+
+    // 3. 스포원파크 4대 테마존 현장 배치도 폴백 및 부스 안내 연결 여부
+    assert.ok(
+      content.includes("FOUNTAIN_ZONE_BLOCKS.map"),
+      "SDK 실패 시에도 4대 테마존 현장 배치도 블록을 폴백으로 렌더링해야 합니다."
+    );
+    assert.ok(
+      content.includes("4대 테마존 부스 (81개)"),
+      "폴백 화면에 상단 부스 탭을 통한 안내 유도 문구가 포함되어야 합니다."
+    );
+  });
 });
+

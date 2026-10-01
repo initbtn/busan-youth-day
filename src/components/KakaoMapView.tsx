@@ -298,12 +298,20 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
       });
     };
 
+    const handleScriptError = () => {
+      if (isMounted) {
+        setLoadError("카카오 지도 SDK를 불러오지 못했습니다. 카카오 개발자 콘솔의 지도 활성화 및 사이트 도메인 등록 상태를 확인해 주세요.");
+        setIsLoading(false);
+      }
+    };
+
     const existingScript = document.getElementById("kakao-map-sdk");
     if (existingScript) {
       if (window.kakao?.maps) {
         initializeMap();
       } else {
         existingScript.addEventListener("load", initializeMap);
+        existingScript.addEventListener("error", handleScriptError);
       }
     } else {
       const script = document.createElement("script");
@@ -311,12 +319,7 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
       script.src = `//dapi.kakao.com/v2/maps/appkey=${apiKey}&autoload=false`;
       script.async = true;
       script.onload = initializeMap;
-      script.onerror = () => {
-        if (isMounted) {
-          setLoadError("카카오맵 SDK 스크립트 로드 중 네트워크 오류가 발생했습니다.");
-          setIsLoading(false);
-        }
-      };
+      script.onerror = handleScriptError;
       document.head.appendChild(script);
     }
 
@@ -324,6 +327,7 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
       isMounted = false;
       if (existingScript) {
         existingScript.removeEventListener("load", initializeMap);
+        existingScript.removeEventListener("error", handleScriptError);
       }
     };
   }, [apiKey, initialSelectedId, handleSelectPoint]);
@@ -474,14 +478,55 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
         )}
 
         {loadError && (
-          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-6 bg-slate-50 text-center space-y-3">
-            <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl border border-amber-200">
-              <AlertCircle className="w-6 h-6 mx-auto mb-1" />
-              <p className="text-xs font-bold">{loadError}</p>
+          <div className="absolute inset-0 z-20 flex flex-col p-4 bg-slate-50 overflow-y-auto">
+            <div className="p-3 bg-amber-50 text-amber-700 rounded-2xl border border-amber-200 text-left mb-3">
+              <div className="flex items-center space-x-2 mb-1">
+                <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                <h4 className="text-xs font-bold">카카오 지도 로드 실패 (현장 배치도 대체)</h4>
+              </div>
+              <p className="text-[11px] text-amber-800 leading-snug">{loadError}</p>
             </div>
-            <p className="text-[11px] text-slate-500">
-              네트워크 상태를 확인하시거나 아래의 안내 탭에서 텍스트 및 상세 약도를 확인하실 수 있습니다.
-            </p>
+
+            {/* 스포원파크 4대 방위 테마존 정적 배치도 폴백 */}
+            <div className="bg-white rounded-2xl p-3 border border-slate-200 shadow-xs flex-1 flex flex-col justify-between">
+              <div className="text-center pb-2 border-b border-slate-100">
+                <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
+                  스포원파크 야외 분수광장 현장 배치도
+                </span>
+                <p className="text-xs font-black text-slate-800 mt-1">중앙 분수대를 중심으로 4대 테마존 배치</p>
+              </div>
+
+              {/* 4방위 테마존 미니 맵 블록 */}
+              <div className="grid grid-cols-2 gap-2 my-3">
+                {FOUNTAIN_ZONE_BLOCKS.map((block) => (
+                  <div
+                    key={block.direction}
+                    className="p-2.5 rounded-xl border border-slate-100 shadow-2xs flex flex-col justify-between"
+                    style={{ backgroundColor: `${block.color}15` }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-800">{block.koreanName}</span>
+                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-white text-slate-600">
+                        {block.direction === "north" && "북측 (재난대피소 앞)"}
+                        {block.direction === "south" && "남측 (실내체육관 방면)"}
+                        {block.direction === "east" && "동측 (가족공원 입구)"}
+                        {block.direction === "west" && "서측 (경륜장 방면)"}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-600 mt-1">{block.description}</p>
+                    <span className="text-[10px] font-semibold text-orange-600 mt-1.5 block">
+                      부스: {block.boothRange} ({block.boothCount}개)
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="p-2.5 bg-slate-50 rounded-xl text-center">
+                <p className="text-[11px] text-slate-600">
+                  상단의 <strong className="text-orange-600 font-bold">&apos;4대 테마존 부스 (81개)&apos;</strong> 탭을 클릭하시면 전체 부스 목록을 확인하실 수 있습니다.
+                </p>
+              </div>
+            </div>
           </div>
         )}
       </div>
