@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { SPOWON_CENTER, SPOWON_MAP_POINTS, MapPoint } from "@/data/mapCoordinates";
+import { SPOWON_CENTER, SPOWON_MAP_POINTS, MapPoint } from "@/data/boothLocations";
 import {
   Sparkles,
   Crosshair,
   ExternalLink,
   AlertCircle,
   X,
+  Navigation,
 } from "lucide-react";
 
 interface KakaoOverlayItem {
@@ -31,11 +32,14 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<KakaoOverlayItem[]>([]);
+  const userLocationOverlayRef = useRef<KakaoOverlayItem | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedPoint, setSelectedPoint] = useState<MapPoint | null>(null);
   const [activeFilter, setActiveFilter] = useState<"all" | "sacrament" | "zone" | "facility">("all");
+  const [isLocating, setIsLocating] = useState(false);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   const apiKey = process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY;
 
@@ -131,7 +135,37 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
     [handleSelectPoint]
   );
 
-  // 카카오 지도 스크립트 비동기 로드
+  // 사용자 위치 오버레이 렌더링
+  const renderUserLocation = useCallback((lat: number, lng: number) => {
+    if (!mapInstanceRef.current || !window.kakao?.maps) return;
+
+    if (userLocationOverlayRef.current) {
+      userLocationOverlayRef.current.setMap(null);
+      userLocationOverlayRef.current = null;
+    }
+
+    const position = new window.kakao.maps.LatLng(lat, lng);
+    const content = document.createElement("div");
+    content.className = "flex flex-col items-center transform -translate-x-1/2 -translate-y-1/2";
+    content.innerHTML = `
+      <div class="relative flex items-center justify-center">
+        <span class="animate-ping absolute inline-flex h-6 w-6 rounded-full bg-blue-400 opacity-75"></span>
+        <div class="relative inline-flex items-center justify-center rounded-full h-4 w-4 bg-blue-600 border-2 border-white shadow-md text-[9px] text-white">
+        </div>
+      </div>
+    `;
+
+    const userOverlay = new window.kakao.maps.CustomOverlay({
+      position,
+      content,
+      zIndex: 10,
+    });
+
+    userOverlay.setMap(mapInstanceRef.current);
+    userLocationOverlayRef.current = userOverlay;
+  }, []);
+
+  // 1. 카카오 지도 SDK 초기 1회 로드 및 지도 인스턴스 마운트
   useEffect(() => {
     if (!apiKey) {
       setLoadError("카카오맵 API 키가 설정되지 않았습니다. 현장 기본 배치도를 표시합니다.");
@@ -153,20 +187,21 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
       window.kakao.maps.load(() => {
         if (!mapContainerRef.current || !isMounted) return;
 
-        const options = {
-          center: new window.kakao.maps.LatLng(SPOWON_CENTER.lat, SPOWON_CENTER.lng),
-          level: 3, // 스포원파크 야외광장이 한눈에 들어오는 줌 레벨
-        };
+        // 이미 생성된 맵 인스턴스가 없을 때만 생성
+        if (!mapInstanceRef.current) {
+          const options = {
+            center: new window.kakao.maps.LatLng(SPOWON_CENTER.lat, SPOWON_CENTER.lng),
+            level: 3, // 스포원파크 야외광장 기본 레벨
+          };
 
-        const map = new window.kakao.maps.Map(mapContainerRef.current, options);
-        mapInstanceRef.current = map;
+          const map = new window.kakao.maps.Map(mapContainerRef.current, options);
+          mapInstanceRef.current = map;
 
-        // 줌 컨트롤 추가
-        const zoomControl = new window.kakao.maps.ZoomControl();
-        map.addControl(zoomControl, window.kakao.maps.ControlPosition.RIGHT);
+          const zoomControl = new window.kakao.maps.ZoomControl();
+          map.addControl(zoomControl, window.kakao.maps.ControlPosition.RIGHT);
+        }
 
         setIsLoading(false);
-        renderMarkers(activeFilter);
 
         if (initialSelectedId) {
           const pt = SPOWON_MAP_POINTS.find((p) => p.id === initialSelectedId);
@@ -177,7 +212,6 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
       });
     };
 
-    // 스크립트가 이미 있는지 확인
     const existingScript = document.getElementById("kakao-map-sdk");
     if (existingScript) {
       if (window.kakao?.maps) {
@@ -202,22 +236,61 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
 
     return () => {
       isMounted = false;
+      if (existingScript) {
+        existingScript.removeEventListener("load", initializeMap);
+      }
     };
-  }, [apiKey, activeFilter, initialSelectedId, renderMarkers, handleSelectPoint]);
+  }, [apiKey, initialSelectedId, handleSelectPoint]);
 
-  // 필터 변경 시 재렌더링
+  // 2. 필터 변경 시 마커만 업데이트 (맵 재생성 방지)
   useEffect(() => {
-    if (!isLoading && !loadError) {
+    if (!isLoading && !loadError && mapInstanceRef.current) {
       renderMarkers(activeFilter);
     }
   }, [activeFilter, isLoading, loadError, renderMarkers]);
 
+  // 3. 사용자 위치 오버레이 갱신
+  useEffect(() => {
+    if (userLocation) {
+      renderUserLocation(userLocation.lat, userLocation.lng);
+    }
+  }, [userLocation, renderUserLocation]);
+
+  // 중앙 광장으로 이동
   const handleResetCenter = () => {
     if (mapInstanceRef.current && window.kakao?.maps) {
       const center = new window.kakao.maps.LatLng(SPOWON_CENTER.lat, SPOWON_CENTER.lng);
       mapInstanceRef.current.panTo(center);
       mapInstanceRef.current.setLevel(3);
     }
+  };
+
+  // 현재 사용자 위치(Geolocation) 추적 및 지도 이동
+  const handleLocateMe = () => {
+    if (!navigator.geolocation) {
+      alert("현재 브라우저에서 위치 정보를 지원하지 않습니다.");
+      return;
+    }
+
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setIsLocating(false);
+        const { latitude, longitude } = pos.coords;
+        setUserLocation({ lat: latitude, lng: longitude });
+
+        if (mapInstanceRef.current && window.kakao?.maps) {
+          const loc = new window.kakao.maps.LatLng(latitude, longitude);
+          mapInstanceRef.current.panTo(loc);
+        }
+      },
+      (err) => {
+        setIsLocating(false);
+        console.warn("Geolocation error:", err.message);
+        alert("현재 위치를 가져올 수 없습니다. 위치 권한을 확인해주세요.");
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
   };
 
   // 카카오맵 외부 길찾기 링크 열기
@@ -266,14 +339,26 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
           </button>
         </div>
 
-        {/* 내 위치 / 광장 중심 복원 버튼 */}
-        <button
-          onClick={handleResetCenter}
-          className="p-2.5 bg-white/95 backdrop-blur-md text-slate-700 rounded-2xl shadow-md border border-slate-200/80 hover:bg-slate-50 transition-colors pointer-events-auto"
-          title="중심 광장으로 이동"
-        >
-          <Crosshair className="w-4 h-4 text-orange-600" />
-        </button>
+        {/* 내 위치 및 광장 중심 컨트롤 그룹 */}
+        <div className="flex items-center space-x-1 pointer-events-auto">
+          <button
+            onClick={handleLocateMe}
+            disabled={isLocating}
+            className={`p-2.5 bg-white/95 backdrop-blur-md rounded-2xl shadow-md border border-slate-200/80 transition-colors ${
+              isLocating ? "text-blue-500 animate-spin" : userLocation ? "text-blue-600 bg-blue-50" : "text-slate-700 hover:bg-slate-50"
+            }`}
+            title="현재 내 위치 찾기"
+          >
+            <Navigation className="w-4 h-4" />
+          </button>
+          <button
+            onClick={handleResetCenter}
+            className="p-2.5 bg-white/95 backdrop-blur-md text-slate-700 rounded-2xl shadow-md border border-slate-200/80 hover:bg-slate-50 transition-colors"
+            title="중심 광장으로 이동"
+          >
+            <Crosshair className="w-4 h-4 text-orange-600" />
+          </button>
+        </div>
       </div>
 
       {/* 2. 지도 컨테이너 */}
