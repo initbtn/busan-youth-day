@@ -29,6 +29,7 @@ interface UserContextType {
   claimReward: () => void;
   treasures: string[]; // 획득한 쭈양이 보물 ID 목록
   addTreasure: (treasureId: string) => boolean;
+  isRewardEligible: boolean; // 초등부, 중고등부, 청년, 교리교사만 수령 가능
   isLeader: boolean; // 교리교사, 사제, 수도자 등 인솔 권한
   parishNotices: Record<string, ParishNotice>;
   updateParishNotice: (parish: string, content: string) => void;
@@ -65,6 +66,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     user?.role === "사제" ||
     user?.role === "수도자" ||
     user?.role === "학사님";
+
+  // PRD §5.1 리워드 대상자 그룹 판별: 초등부, 중고등부, 청년, 교리교사만 수령 가능
+  const isRewardEligible =
+    user?.role === "청년" ||
+    user?.role === "주일학교 중고등부" ||
+    user?.role === "주일학교 초등부" ||
+    user?.role === "교리교사";
 
   useEffect(() => {
     const savedUser = localStorage.getItem("byd2026_user");
@@ -133,6 +141,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     const updated = [...treasures, treasureId];
     setTreasures(updated);
     localStorage.setItem("byd2026_treasures", JSON.stringify(updated));
+
+    // 보물찾기 5개 완주 시 굿즈 교환권 활성화 (PRD §5)
+    if (updated.length >= 5 && !hasRewardCoupon) {
+      setHasRewardCoupon(true);
+      localStorage.setItem("byd2026_reward", "true");
+    }
     return true;
   };
 
@@ -167,6 +181,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         claimReward,
         treasures,
         addTreasure,
+        isRewardEligible,
         isLeader,
         parishNotices,
         updateParishNotice,
