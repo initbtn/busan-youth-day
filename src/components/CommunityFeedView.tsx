@@ -31,19 +31,29 @@ import {
   FeedSortOrder,
   sortCommunityPosts,
   togglePostLike,
+  getPostMediaUrls,
 } from "@/lib/communityPosts";
+import { optimizeImage, isSupportedMediaType, isVideoFile } from "@/lib/imageOptimizer";
+import { isVideoUrl, compressVideoIfNeeded } from "@/lib/videoCompressor";
+import { MediaSliderViewer } from "@/components/MediaSliderViewer";
 
 export function CommunityFeedView() {
   const { user } = useUser();
   const [posts, setPosts] = useState<CommunityPost[]>(INITIAL_POSTS);
   const [sortOrder, setSortOrder] = useState<FeedSortOrder>("latest");
   const [newContent, setNewContent] = useState("");
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [isPosting, setIsPosting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [reportingPost, setReportingPost] = useState<CommunityPost | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 미디어 전체화면 슬라이드 뷰어 상태
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerMediaUrls, setViewerMediaUrls] = useState<string[]>([]);
+  const [viewerIndex, setViewerIndex] = useState(0);
+  const [viewerAuthor, setViewerAuthor] = useState<string | undefined>(undefined);
 
   // 1. 컴포넌트 마운트 시: LocalStorage 오프라인 캐시 즉시 복원 + Supabase 원격 피드 동기화
   useEffect(() => {
@@ -97,22 +107,77 @@ export function CommunityFeedView() {
     });
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawFiles = Array.from(e.target.files || []);
+    if (rawFiles.length === 0) return;
 
-    // 최대 10MB 검증
-    if (file.size > 10 * 1024 * 1024) {
-      alert("파일 크기는 10MB 이하여야 합니다.");
+    if (selectedFiles.length + rawFiles.length > 5) {
+      alert("한 번에 최대 5개의 사진/동영상만 첨부할 수 있습니다.");
       return;
     }
 
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
+    const newOptimizedFiles: File[] = [];
+    const newPreviews: string[] = [];
+
+    for (const file of rawFiles) {
+      if (!isSupportedMediaType(file.type)) {
+        alert(`${file.name}: 지원하지 않는 파일 형식입니다. (JPEG, PNG, WebP, GIF, MP4, MOV 등 지원)`);
+        continue;
+      }
+
+      // 비디오 크기 검증 (최대 50MB)
+      if (isVideoFile(file) && file.size > 50 * 1024 * 1024) {
+        alert(`${file.name}: 동영상 크기는 최대 50MB 이하여야 합니다.`);
+        continue;
+      }
+
+      // 이미지 크기 검증 (최대 15MB)
+      if (!isVideoFile(file) && file.size > 15 * 1024 * 1024) {
+        alert(`${file.name}: 사진 크기는 15MB 이하여야 합니다.`);
+        continue;
+      }
+
+      try {
+        if (isVideoFile(file)) {
+          const validated = await compressVideoIfNeeded(file);
+          newOptimizedFiles.push(validated as File);
+          newPreviews.push(URL.createObjectURL(validated));
+        } else {
+          // 클라이언트 이미지 리사이즈 및 압축 최적화 (DoD 3)
+          const optimized = await optimizeImage(file, { maxDimension: 1920, quality: 0.85 });
+          newOptimizedFiles.push(optimized as File);
+          newPreviews.push(URL.createObjectURL(optimized));
+        }
+      } catch (err) {
+        console.warn("Media processing error:", err);
+        newOptimizedFiles.push(file);
+        newPreviews.push(URL.createObjectURL(file));
+      }
     }
-    setSelectedFile(file);
-    const objectUrl = URL.createObjectURL(file);
-    setPreviewUrl(objectUrl);
+
+    setSelectedFiles((prev) => [...prev, ...newOptimizedFiles]);
+    setPreviewUrls((prev) => [...prev, ...newPreviews]);
+
+    // file input 초기화하여 동일 파일 재선택 허용
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+    setPreviewUrls((prev) => {
+      if (prev[index]) URL.revokeObjectURL(prev[index]);
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
+  const openViewer = (mediaUrls: string[], initialIdx = 0, author?: string) => {
+    if (!mediaUrls || mediaUrls.length === 0) return;
+    setViewerMediaUrls(mediaUrls);
+    setViewerIndex(initialIdx);
+    setViewerAuthor(author);
+    setViewerOpen(true);
   };
 
   const handleSharePost = async (post: CommunityPost) => {
@@ -159,53 +224,54 @@ export function CommunityFeedView() {
     if (!newContent.trim()) return;
 
     setIsPosting(true);
-    let uploadedImageUrl: string | undefined = undefined;
+    const uploadedUrls: string[] = [];
 
-    // Cloudflare R2 업로드 API 시도
-    if (selectedFile) {
+    // Cloudflare R2 멀티 파일 순차/병렬 업로드
+    if (selectedFiles.length > 0) {
       try {
-        const presignedRes = await fetch("/api/upload", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            fileName: selectedFile.name,
-            contentType: selectedFile.type,
-          }),
-        });
+        for (const file of selectedFiles) {
+          const presignedRes = await fetch("/api/upload", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              fileName: file.name,
+              contentType: file.type || "application/octet-stream",
+            }),
+          });
 
-        if (!presignedRes.ok) {
-          throw new Error("Presigned URL 발급 실패");
+          if (!presignedRes.ok) {
+            throw new Error(`Presigned URL 발급 실패 (${file.name})`);
+          }
+
+          const { uploadUrl, publicUrl } = await presignedRes.json();
+          const uploadRes = await fetch(uploadUrl, {
+            method: "PUT",
+            headers: { "Content-Type": file.type || "application/octet-stream" },
+            body: file,
+          });
+
+          if (!uploadRes.ok) {
+            throw new Error(`스토리지 전송 실패 (${file.name})`);
+          }
+
+          uploadedUrls.push(publicUrl);
         }
-
-        const { uploadUrl, publicUrl } = await presignedRes.json();
-        // S3 직업로드
-        const uploadRes = await fetch(uploadUrl, {
-          method: "PUT",
-          headers: { "Content-Type": selectedFile.type },
-          body: selectedFile,
-        });
-
-        if (!uploadRes.ok) {
-          throw new Error("스토리지 전송 실패");
-        }
-
-        // R2 영구 CDN URL 연결
-        uploadedImageUrl = publicUrl;
       } catch (err) {
-        console.error("Image upload failed:", err);
-        alert("사진 업로드 중 오류가 발생했습니다. 사진 없이 글을 올리시거나 네트워크 상태를 확인 후 다시 시도해 주세요.");
+        console.error("Media upload failed:", err);
+        alert("사진/동영상 업로드 중 오류가 발생했습니다. 네트워크 상태를 확인 후 다시 시도해 주세요.");
         setIsPosting(false);
-        return; // 실패 시 임시 주소(blob:)로 글을 올리지 않고 즉시 중단 (깨진 이미지 방어)
+        return; // 실패 시 임시 주소(blob:)로 글을 올리지 않고 즉시 중단 (깨진 미디어 방어)
       }
     }
 
-    // 새 게시글 객체 생성 (UUID, 시간, 유저 메타데이터 포함)
+    // 새 게시글 객체 생성 (UUID, 시간, 멀티 미디어 포함)
     const newPost = createPostPayload({
       author: user?.name || "익명의 순례자",
       parish: user?.parish || "하단",
       role: user?.role || "청년",
       content: newContent,
-      imageUrl: uploadedImageUrl,
+      imageUrl: uploadedUrls[0],
+      mediaUrls: uploadedUrls.length > 0 ? uploadedUrls : undefined,
       userId: user?.id,
     });
 
@@ -215,11 +281,9 @@ export function CommunityFeedView() {
     cachePosts(nextPosts);
 
     setNewContent("");
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-    }
-    setSelectedFile(null);
-    setPreviewUrl(null);
+    previewUrls.forEach((url) => URL.revokeObjectURL(url));
+    setSelectedFiles([]);
+    setPreviewUrls([]);
     setIsPosting(false);
 
     // Supabase posts 테이블에 비동기 영구 저장 (백그라운드 동기화)
@@ -285,21 +349,55 @@ export function CommunityFeedView() {
           className="w-full text-xs p-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
         />
 
-        {/* 선택한 이미지 미리보기 */}
-        {previewUrl && (
-          <div className="relative w-full aspect-video rounded-2xl overflow-hidden border border-slate-200">
-            <img src={previewUrl} alt="선택한 사진 미리보기" className="w-full h-full object-cover" />
-            <button
-              type="button"
-              onClick={() => {
-                if (previewUrl) URL.revokeObjectURL(previewUrl);
-                setSelectedFile(null);
-                setPreviewUrl(null);
-              }}
-              className="absolute top-2 right-2 p-1 bg-black/60 text-white rounded-full hover:bg-black/80"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
+        {/* 선택한 사진/영상 미리보기 그리드 */}
+        {previewUrls.length > 0 && (
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
+              <span>첨부된 미디어 ({previewUrls.length}/5)</span>
+              <button
+                type="button"
+                onClick={() => {
+                  previewUrls.forEach((url) => URL.revokeObjectURL(url));
+                  setSelectedFiles([]);
+                  setPreviewUrls([]);
+                }}
+                className="text-rose-500 hover:text-rose-600"
+              >
+                전체 취소
+              </button>
+            </div>
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+              {previewUrls.map((url, idx) => {
+                const file = selectedFiles[idx];
+                const isVideo = file ? isVideoFile(file) : isVideoUrl(url);
+
+                return (
+                  <div
+                    key={`${url}-${idx}`}
+                    className="relative aspect-square rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 group"
+                  >
+                    {isVideo ? (
+                      <video src={url} className="w-full h-full object-cover" muted />
+                    ) : (
+                      <img src={url} alt={`미리보기 ${idx + 1}`} className="w-full h-full object-cover" />
+                    )}
+                    {isVideo && (
+                      <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-black/70 text-white">
+                        VIDEO
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveFile(idx)}
+                      className="absolute top-1 right-1 p-1 bg-black/70 text-white rounded-full hover:bg-black/90 transition-colors shadow-sm"
+                      title="삭제"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -308,7 +406,9 @@ export function CommunityFeedView() {
             type="file"
             ref={fileInputRef}
             onChange={handleFileChange}
-            accept="image/*"
+            multiple
+            accept="image/*,video/*"
+            data-testid="media-file-input"
             className="hidden"
           />
 
@@ -318,7 +418,7 @@ export function CommunityFeedView() {
             className="flex items-center space-x-1.5 text-blue-600 hover:text-blue-700 text-xs font-bold bg-blue-50 px-3 py-1.5 rounded-xl transition-colors"
           >
             <Camera className="w-4 h-4" />
-            <span>사진 첨부</span>
+            <span>사진·영상 첨부 {selectedFiles.length > 0 ? `(${selectedFiles.length})` : ""}</span>
           </button>
 
           <button
@@ -404,16 +504,79 @@ export function CommunityFeedView() {
               </button>
             </div>
 
-            {/* 이미지 (선택) */}
-            {post.imageUrl && (
-              <div className="relative w-full aspect-video bg-slate-100">
-                <img
-                  src={post.imageUrl}
-                  alt="순례 인증샷"
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            )}
+            {/* 이미지 및 멀티 미디어 (선택) */}
+            {(() => {
+              const mediaList = getPostMediaUrls(post);
+              if (mediaList.length === 0) return null;
+
+              if (mediaList.length === 1) {
+                const singleUrl = mediaList[0];
+                const isVideo = isVideoUrl(singleUrl);
+
+                return (
+                  <div
+                    data-testid="post-media-thumbnail"
+                    onClick={() => openViewer(mediaList, 0, post.author)}
+                    className="relative w-full aspect-video bg-slate-100 overflow-hidden cursor-pointer group"
+                  >
+                    {isVideo ? (
+                      <video src={singleUrl} className="w-full h-full object-cover" controls preload="metadata" />
+                    ) : (
+                      <img
+                        src={singleUrl}
+                        alt="순례 인증샷"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    )}
+                  </div>
+                );
+              }
+
+              // 2장 이상 멀티 미디어 그리드
+              return (
+                <div
+                  data-testid="post-media-thumbnail"
+                  className="grid grid-cols-2 gap-1 w-full aspect-video bg-slate-100 overflow-hidden cursor-pointer"
+                  onClick={() => openViewer(mediaList, 0, post.author)}
+                >
+                  {mediaList.slice(0, 4).map((url, idx) => {
+                    const isVideo = isVideoUrl(url);
+                    const isLast = idx === 3 && mediaList.length > 4;
+
+                    return (
+                      <div
+                        key={`${url}-${idx}`}
+                        className="relative w-full h-full overflow-hidden group bg-slate-200"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openViewer(mediaList, idx, post.author);
+                        }}
+                      >
+                        {isVideo ? (
+                          <video src={url} className="w-full h-full object-cover" muted />
+                        ) : (
+                          <img
+                            src={url}
+                            alt={`순례 인증샷 ${idx + 1}`}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        )}
+                        {isVideo && (
+                          <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded text-[8px] font-bold bg-black/70 text-white">
+                            VIDEO
+                          </span>
+                        )}
+                        {isLast && (
+                          <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white text-base font-black">
+                            +{mediaList.length - 3}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
 
             {/* 본문 및 인터랙션 */}
             <div className="p-4 space-y-2">
@@ -493,6 +656,15 @@ export function CommunityFeedView() {
           </div>
         </div>
       )}
+
+      {/* 5. 구글포토 스타일 전체화면 확대 슬라이드 뷰어 */}
+      <MediaSliderViewer
+        isOpen={viewerOpen}
+        mediaUrls={viewerMediaUrls}
+        initialIndex={viewerIndex}
+        authorName={viewerAuthor}
+        onClose={() => setViewerOpen(false)}
+      />
     </div>
   );
 }
