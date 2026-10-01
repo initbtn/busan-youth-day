@@ -5,12 +5,23 @@ export interface CommunityPost {
   role: string;
   content: string;
   imageUrl?: string;
+  mediaUrls?: string[];
   likes: number;
   timeAgo: string;
   isLiked?: boolean;
   createdAt?: string;
   userId?: string;
   isOfficial?: boolean;
+}
+
+export function getPostMediaUrls(post: Partial<CommunityPost>): string[] {
+  if (Array.isArray(post.mediaUrls) && post.mediaUrls.length > 0) {
+    return post.mediaUrls;
+  }
+  if (post.imageUrl) {
+    return [post.imageUrl];
+  }
+  return [];
 }
 
 const OFFICIAL_ROLES = new Set(["사제", "수도자", "학사님", "신부님", "수녀님"]);
@@ -102,12 +113,18 @@ export function loadCachedPosts(): CommunityPost[] {
     const list = Array.isArray(parsed) ? parsed : [];
     // blob: URL은 일시적인 브라우저 메모리 주소이므로 복원 시 제거 (엑스박스 방어)
     return list.map((post) => {
+      let cleaned = post;
       if (post.imageUrl && post.imageUrl.startsWith("blob:")) {
-        const cleaned = { ...post };
+        cleaned = { ...cleaned };
         delete cleaned.imageUrl;
-        return cleaned;
       }
-      return post;
+      if (Array.isArray(cleaned.mediaUrls)) {
+        const filtered = cleaned.mediaUrls.filter((u: string) => typeof u === "string" && !u.startsWith("blob:"));
+        if (filtered.length !== cleaned.mediaUrls.length) {
+          cleaned = { ...cleaned, mediaUrls: filtered };
+        }
+      }
+      return cleaned;
     });
   } catch (err) {
     console.warn("Failed to load cached posts from localStorage:", err);
@@ -132,6 +149,7 @@ export interface CreatePostParams {
   role?: string;
   content: string;
   imageUrl?: string;
+  mediaUrls?: string[];
   userId?: string;
 }
 
@@ -150,6 +168,11 @@ export function createPostPayload(params: CreatePostParams): CommunityPost {
   // blob: URL은 브라우저 탭 세션에만 유효한 임시 주소이므로 영구 저장 차단
   const sanitizedImageUrl =
     params.imageUrl && !params.imageUrl.startsWith("blob:") ? params.imageUrl : undefined;
+  const sanitizedMediaUrls = Array.isArray(params.mediaUrls)
+    ? params.mediaUrls.filter((u) => typeof u === "string" && !u.startsWith("blob:"))
+    : sanitizedImageUrl
+      ? [sanitizedImageUrl]
+      : undefined;
 
   return {
     id: generateUuid(),
@@ -157,7 +180,8 @@ export function createPostPayload(params: CreatePostParams): CommunityPost {
     parish: params.parish || "부산",
     role: params.role || "청년",
     content: params.content,
-    imageUrl: sanitizedImageUrl,
+    imageUrl: sanitizedImageUrl || (sanitizedMediaUrls && sanitizedMediaUrls.length > 0 ? sanitizedMediaUrls[0] : undefined),
+    mediaUrls: sanitizedMediaUrls,
     likes: 1,
     timeAgo: "방금 전",
     isLiked: true,

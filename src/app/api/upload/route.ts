@@ -12,11 +12,19 @@ export async function POST(request: Request) {
       );
     }
 
-    // 허용 이미지 MIME 타입 검증
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    // 허용 이미지 및 영상 MIME 타입 검증
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "image/gif",
+      "video/mp4",
+      "video/webm",
+      "video/quicktime",
+    ];
     if (!allowedTypes.includes(contentType)) {
       return NextResponse.json(
-        { error: "Only image files (jpeg, png, webp, gif) are allowed" },
+        { error: "Only image (jpeg, png, webp, gif) and video (mp4, webm, mov) files are allowed" },
         { status: 400 }
       );
     }
