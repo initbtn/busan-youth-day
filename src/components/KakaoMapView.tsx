@@ -669,18 +669,32 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
         onClose={() => setIsBoothModalOpen(false)}
         initialZoneId={boothModalInitialZone}
         onSelectBooth={(booth) => {
-          // 해당 존의 중심 좌표 또는 매칭 포인트 탐색 (SPOWON_MAP_POINTS)
+          // 1. 7성사 부스인 경우 전용 정밀 좌표(SPOWON_MAP_POINTS의 sacrament) 매핑
+          const sacramentPoint = booth.isSacrament
+            ? SPOWON_MAP_POINTS.find(
+                (p) =>
+                  p.category === "sacrament" &&
+                  p.zoneId === booth.zoneId &&
+                  p.boothNumber === booth.boothNumber
+              )
+            : null;
+
+          // 2. 일반 부스인 경우 해당 구역(zone) 대표 좌표 매핑
           const zonePoint = SPOWON_MAP_POINTS.find(
             (p) => p.category === "zone" && p.zoneId === booth.zoneId
           );
+
+          const targetLat = sacramentPoint?.lat ?? zonePoint?.lat ?? SPOWON_CENTER.lat;
+          const targetLng = sacramentPoint?.lng ?? zonePoint?.lng ?? SPOWON_CENTER.lng;
+
           const point: MapPoint = {
-            id: `booth-${booth.zoneId}-${booth.boothNumber}`,
+            id: sacramentPoint ? sacramentPoint.id : `booth-${booth.zoneId}-${booth.boothNumber}`,
             name: booth.name || "부스",
             category: booth.isSacrament ? "sacrament" : "zone",
             zoneId: booth.zoneId,
             zoneName: booth.zoneName,
-            lat: zonePoint ? zonePoint.lat : SPOWON_CENTER.lat,
-            lng: zonePoint ? zonePoint.lng : SPOWON_CENTER.lng,
+            lat: targetLat,
+            lng: targetLng,
             description: `${booth.zoneName} ${booth.boothNumber}번 부스`,
             boothNumber: booth.boothNumber,
             isSacrament: booth.isSacrament,

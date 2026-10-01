@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { OFFICIAL_ZONES, OfficialBooth, ZoneData } from "@/data/officialBooths";
 import { MapPoint } from "@/data/boothLocations";
 import {
@@ -37,6 +37,27 @@ export function BoothListModal({
   const [onlySacrament, setOnlySacrament] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
+  // 모달이 열릴 때 또는 initialZoneId prop 변경 시 필터 상태 동기화 (stale state 방지)
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedZoneFilter(initialZoneId);
+      setOnlySacrament(false);
+      setSearchQuery("");
+    }
+  }, [isOpen, initialZoneId]);
+
+  // ESC 키 입력 시 모달 닫기
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
   // 81개 전체 부스 목록 평탄화 (Zone 정보 결합)
   const allBooths = useMemo<BoothItemWithZone[]>(() => {
     return OFFICIAL_ZONES.flatMap((zone) =>
@@ -48,6 +69,18 @@ export function BoothListModal({
       }))
     );
   }, []);
+
+  // 존별 및 7성사 부스 개수 동적 산출 (하드코딩 방지)
+  const zoneCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      all: allBooths.length,
+      sacrament: allBooths.filter((b) => b.isSacrament).length,
+    };
+    OFFICIAL_ZONES.forEach((z) => {
+      counts[z.id] = z.booths.length;
+    });
+    return counts;
+  }, [allBooths]);
 
   // 필터링 및 검색 로직
   const filteredBooths = useMemo(() => {
@@ -90,8 +123,14 @@ export function BoothListModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[88vh] border border-slate-100 overflow-hidden">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[88vh] border border-slate-100 overflow-hidden"
+      >
         {/* 모달 헤더 */}
         <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
           <div>
@@ -148,7 +187,7 @@ export function BoothListModal({
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
-              전체 ({allBooths.length})
+              전체 ({zoneCounts.all})
             </button>
             <button
               onClick={() => setSelectedZoneFilter("faith")}
@@ -158,7 +197,7 @@ export function BoothListModal({
                   : "bg-blue-50 text-blue-700 hover:bg-blue-100"
               }`}
             >
-              믿음존 (19)
+              믿음존 ({zoneCounts.faith || 19})
             </button>
             <button
               onClick={() => setSelectedZoneFilter("hope")}
@@ -168,7 +207,7 @@ export function BoothListModal({
                   : "bg-amber-50 text-amber-700 hover:bg-amber-100"
               }`}
             >
-              희망존 (21)
+              희망존 ({zoneCounts.hope || 21})
             </button>
             <button
               onClick={() => setSelectedZoneFilter("love")}
@@ -178,7 +217,7 @@ export function BoothListModal({
                   : "bg-rose-50 text-rose-700 hover:bg-rose-100"
               }`}
             >
-              사랑존 (31)
+              사랑존 ({zoneCounts.love || 31})
             </button>
             <button
               onClick={() => setSelectedZoneFilter("sharing")}
@@ -188,7 +227,7 @@ export function BoothListModal({
                   : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
               }`}
             >
-              나눔존 (10)
+              나눔존 ({zoneCounts.sharing || 10})
             </button>
             <button
               onClick={() => setOnlySacrament((prev) => !prev)}
@@ -199,7 +238,7 @@ export function BoothListModal({
               }`}
             >
               <Sparkles className="w-3 h-3" />
-              <span>7성사 필수 (7)</span>
+              <span>7성사 필수 ({zoneCounts.sacrament || 7})</span>
             </button>
           </div>
         </div>
