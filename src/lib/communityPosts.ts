@@ -300,6 +300,10 @@ export function mergeCommunityPosts(
   localPosts: CommunityPost[],
   initialFallback: CommunityPost[] = INITIAL_POSTS
 ): CommunityPost[] {
+  // 로컬 캐시 맵 (사용자가 상호작용하거나 오프라인에서 작성한 게시글)
+  const localMap = new Map<string, CommunityPost>();
+  localPosts.forEach((p) => localMap.set(p.id, p));
+
   const map = new Map<string, CommunityPost>();
 
   // 1. Initial 기본 게시글 등록
@@ -310,16 +314,17 @@ export function mergeCommunityPosts(
 
   // 3. Supabase 원격 게시글 등록
   remotePosts.forEach((p) => {
-    const existing = map.get(p.id);
+    const local = localMap.get(p.id);
     let resolvedLikes = typeof p.likes === "number" ? p.likes : 0;
-    let resolvedIsLiked = existing?.isLiked ?? p.isLiked ?? false;
+    let resolvedIsLiked = p.isLiked ?? false;
 
-    // 만약 로컬에 기존 상호작용 기록이 있는 경우
-    if (existing) {
-      resolvedIsLiked = existing.isLiked ?? false;
-      // 로컬에서 좋아요 수가 변경되었거나 isLiked 상태가 정의되어 있으면 로컬의 likes 수치를 우선 보존
-      if (typeof existing.likes === "number") {
-        resolvedLikes = Math.max(0, existing.likes);
+    // 사용자의 로컬 상호작용/캐시가 있는 경우에만 로컬 수치 및 상태 보존
+    if (local) {
+      if (typeof local.isLiked === "boolean") {
+        resolvedIsLiked = local.isLiked;
+      }
+      if (typeof local.likes === "number") {
+        resolvedLikes = Math.max(0, local.likes);
       }
     }
 

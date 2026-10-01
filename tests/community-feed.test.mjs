@@ -375,5 +375,26 @@ describe("Community Feed Persistence (Issue #9)", () => {
       "로컬에서 좋아요 취소된 수치가 원격으로 인해 다시 10으로 롤백되지 않아야 함"
     );
     assert.equal(mergedUnliked[0].isLiked, false);
+
+    // 5. 사용자가 로컬에서 조작하지 않은 fallback 포스트: 원격 최신 likes 증가가 정상 반영되어야 함 (Major finding 검증)
+    const fallbackPost = {
+      id: "post-1",
+      author: "김마리아",
+      parish: "중앙성당",
+      role: "청년회장",
+      content: "초기 게시글",
+      likes: 12, // 초기 fallback likes
+      timeAgo: "10분 전",
+    };
+    const remoteUpdatedPost = {
+      ...fallbackPost,
+      likes: 50, // 원격 DB에서 다른 사용자들이 좋아요 눌러 50으로 증가
+    };
+    const mergedFallback = mergeCommunityPosts([remoteUpdatedPost], [], [fallbackPost]);
+    assert.equal(
+      mergedFallback[0].likes,
+      50,
+      "로컬에서 조작하지 않은 포스트는 원격의 최신 likes(50)가 fallback likes(12)에 의해 덮어씌워지지 않고 반영되어야 함"
+    );
   });
 });
