@@ -6,7 +6,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useUser, UserProvider } from "@/context/UserContext";
 import { OnboardingModal } from "@/components/OnboardingModal";
-import { OfficialBoothStageGuide } from "@/components/OfficialBoothStageGuide";
 import {
   MapPin,
   Compass,
@@ -24,7 +23,6 @@ function TabsLayoutContent({
   const { user } = useUser();
   const pathname = usePathname();
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
-  const [isMapGuideOpen, setIsMapGuideOpen] = useState(false);
 
   // 최초 방문 시 온보딩 모달 오픈
   useEffect(() => {
@@ -183,11 +181,6 @@ function TabsLayoutContent({
 
       {/* 전역 모달 */}
       <OnboardingModal isOpen={isOnboardingOpen} onClose={() => setIsOnboardingOpen(false)} />
-      <OfficialBoothStageGuide
-        isOpen={isMapGuideOpen}
-        onClose={() => setIsMapGuideOpen(false)}
-        defaultTab="map"
-      />
     </div>
   );
 }

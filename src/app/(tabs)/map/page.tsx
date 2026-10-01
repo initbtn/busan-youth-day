@@ -99,7 +99,7 @@ export default function MapPage() {
                 onClick={() => setSelectedZone(zone.id)}
                 className={`py-2 px-1 rounded-xl text-xs font-bold flex flex-col items-center justify-center transition-all ${
                   selectedZone === zone.id
-                    ? `${zone.color} text-white shadow-sm scale-[1.02]`
+                    ? `bg-gradient-to-r ${zone.color} text-white shadow-sm scale-[1.02]`
                     : "bg-white text-slate-600 border border-slate-100 hover:bg-slate-50"
                 }`}
               >
@@ -112,7 +112,7 @@ export default function MapPage() {
           <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
               <div>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full text-white ${currentZoneData.color}`}>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full text-white bg-gradient-to-r ${currentZoneData.color}`}>
                   {currentZoneData.name}
                 </span>
                 <h3 className="text-sm font-black text-slate-800 mt-1">{currentZoneData.koreanName}</h3>

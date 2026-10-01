@@ -5,8 +5,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { useUser } from "@/context/UserContext";
 import { EVENT_SCHEDULE } from "@/data/schedule";
-import { FullSpiritualViewer } from "@/components/FullSpiritualViewer";
-import { OfficialBoothStageGuide } from "@/components/OfficialBoothStageGuide";
 import {
   Calendar,
   MapPin,
@@ -18,8 +16,6 @@ import {
 export function HomeTimelineView() {
   const { user, isLeader, parishNotices, updateParishNotice } = useUser();
   const [selectedDay, setSelectedDay] = useState<15 | 16 | 17>(15);
-  const [spiritualViewer, setSpiritualViewer] = useState<"prayer" | "song" | "saints" | null>(null);
-  const [isMapGuideOpen, setIsMapGuideOpen] = useState(false);
 
   // 본당 CMS 공지 작성 상태
   const userParish = user?.parish || "하단";
@@ -278,17 +274,6 @@ export function HomeTimelineView() {
           ))}
         </div>
       </div>
-
-      {/* 전면 고화질 영적 뷰어 및 지도 모달 */}
-      <FullSpiritualViewer
-        type={spiritualViewer}
-        onClose={() => setSpiritualViewer(null)}
-      />
-      <OfficialBoothStageGuide
-        isOpen={isMapGuideOpen}
-        onClose={() => setIsMapGuideOpen(false)}
-        defaultTab="map"
-      />
     </div>
   );
 }
