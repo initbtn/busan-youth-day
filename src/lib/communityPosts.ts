@@ -283,26 +283,55 @@ export async function fetchPostsFromSupabase(supabaseClient: unknown): Promise<C
   }
 }
 
+export function togglePostLike(post: CommunityPost): CommunityPost {
+  const willLike = !post.isLiked;
+  const currentLikes = typeof post.likes === "number" ? post.likes : 0;
+  const nextLikes = willLike ? currentLikes + 1 : Math.max(0, currentLikes - 1);
+
+  return {
+    ...post,
+    isLiked: willLike,
+    likes: nextLikes,
+  };
+}
+
 export function mergeCommunityPosts(
   remotePosts: CommunityPost[],
   localPosts: CommunityPost[],
   initialFallback: CommunityPost[] = INITIAL_POSTS
 ): CommunityPost[] {
+  // 로컬 캐시 맵 (사용자가 상호작용하거나 오프라인에서 작성한 게시글)
+  const localMap = new Map<string, CommunityPost>();
+  localPosts.forEach((p) => localMap.set(p.id, p));
+
   const map = new Map<string, CommunityPost>();
 
   // 1. Initial 기본 게시글 등록
   initialFallback.forEach((p) => map.set(p.id, p));
 
-  // 2. 로컬 캐시 게시글 등록 (사용자가 오프라인/최근 작성한 것)
+  // 2. 로컬 캐시 게시글 등록 (사용자가 오프라인/최근 작성 및 좋아요 토글한 것)
   localPosts.forEach((p) => map.set(p.id, p));
 
-  // 3. Supabase 원격 게시글 등록 (원격이 최신 신뢰 정본)
+  // 3. Supabase 원격 게시글 등록
   remotePosts.forEach((p) => {
-    const existing = map.get(p.id);
+    const local = localMap.get(p.id);
+    let resolvedLikes = typeof p.likes === "number" ? p.likes : 0;
+    let resolvedIsLiked = p.isLiked ?? false;
+
+    // 사용자의 로컬 상호작용/캐시가 있는 경우에만 로컬 수치 및 상태 보존
+    if (local) {
+      if (typeof local.isLiked === "boolean") {
+        resolvedIsLiked = local.isLiked;
+      }
+      if (typeof local.likes === "number") {
+        resolvedLikes = Math.max(0, local.likes);
+      }
+    }
+
     map.set(p.id, {
       ...p,
-      // 로컬 좋아요 상태 보존
-      isLiked: existing?.isLiked ?? p.isLiked,
+      likes: resolvedLikes,
+      isLiked: resolvedIsLiked,
     });
   });
 
@@ -317,3 +346,4 @@ export function mergeCommunityPosts(
 
   return all;
 }
+
