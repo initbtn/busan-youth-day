@@ -313,7 +313,7 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
       script.onload = initializeMap;
       script.onerror = () => {
         if (isMounted) {
-          setLoadError("카카오맵 SDK 스크립트 로드 중 네트워크 오류가 발생했습니다.");
+          setLoadError("카카오 지도 SDK를 불러오지 못했습니다. 카카오 개발자 콘솔의 지도 활성화 및 사이트 도메인 등록 상태를 확인해 주세요.");
           setIsLoading(false);
         }
       };
