@@ -144,9 +144,20 @@ export function CommunityFeedView() {
         alert("게시글 공유 링크가 클립보드에 복사되었습니다! 📋");
       } catch (err) {
         console.warn("Clipboard copy failed:", err);
+        alert("링크 복사에 실패했습니다. 브라우저 권한을 확인해 주세요.");
       }
     }
   };
+
+  // 신고 모달 오픈 시 ESC 키 닫기 이벤트 연동 (접근성 보완)
+  useEffect(() => {
+    if (!reportingPost) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setReportingPost(null);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [reportingPost]);
 
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -209,6 +220,9 @@ export function CommunityFeedView() {
     cachePosts(nextPosts);
 
     setNewContent("");
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
     setSelectedFile(null);
     setPreviewUrl(null);
     setIsPosting(false);
