@@ -48,6 +48,7 @@ export function FullSpiritualViewer({ type, onClose }: FullSpiritualViewerProps)
                 onClick={handleZoomOut}
                 className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs"
                 title="축소"
+                aria-label="축소"
               >
                 <ZoomOut className="w-4 h-4" />
               </button>
@@ -55,6 +56,7 @@ export function FullSpiritualViewer({ type, onClose }: FullSpiritualViewerProps)
                 onClick={handleZoomIn}
                 className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs"
                 title="확대"
+                aria-label="확대"
               >
                 <ZoomIn className="w-4 h-4" />
               </button>
