@@ -1,7 +1,21 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Heart, MessageSquare, Camera, Flag, Sparkles, X, Upload, RefreshCw, ShieldCheck, AlertTriangle } from "lucide-react";
+import {
+  Heart,
+  MessageSquare,
+  Camera,
+  Flag,
+  Sparkles,
+  X,
+  Upload,
+  RefreshCw,
+  ShieldCheck,
+  AlertTriangle,
+  Share2,
+  Clock,
+  Flame,
+} from "lucide-react";
 import { useUser } from "@/context/UserContext";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -14,11 +28,14 @@ import {
   fetchPostsFromSupabase,
   mergeCommunityPosts,
   isOfficialRole,
+  FeedSortOrder,
+  sortCommunityPosts,
 } from "@/lib/communityPosts";
 
 export function CommunityFeedView() {
   const { user } = useUser();
   const [posts, setPosts] = useState<CommunityPost[]>(INITIAL_POSTS);
+  const [sortOrder, setSortOrder] = useState<FeedSortOrder>("latest");
   const [newContent, setNewContent] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -95,9 +112,40 @@ export function CommunityFeedView() {
       return;
     }
 
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
     setSelectedFile(file);
     const objectUrl = URL.createObjectURL(file);
     setPreviewUrl(objectUrl);
+  };
+
+  const handleSharePost = async (post: CommunityPost) => {
+    const shareData = {
+      title: "2026 BYD 소통 피드",
+      text: `[2026 BYD] ${post.author}님의 순례 이야기: "${post.content.slice(0, 60)}..."`,
+      url: typeof window !== "undefined" ? window.location.href : "https://busan-youth-day.vercel.app",
+    };
+
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch (err) {
+        if ((err as Error).name !== "AbortError") {
+          console.warn("Navigator share failed:", err);
+        }
+      }
+    }
+
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(shareData.url);
+        alert("게시글 공유 링크가 클립보드에 복사되었습니다! 📋");
+      } catch (err) {
+        console.warn("Clipboard copy failed:", err);
+      }
+    }
   };
 
   const handleCreatePost = async (e: React.FormEvent) => {
@@ -235,6 +283,7 @@ export function CommunityFeedView() {
             <button
               type="button"
               onClick={() => {
+                if (previewUrl) URL.revokeObjectURL(previewUrl);
                 setSelectedFile(null);
                 setPreviewUrl(null);
               }}
@@ -274,9 +323,42 @@ export function CommunityFeedView() {
         </div>
       </form>
 
+      {/* 정렬 필터 탭 (기획서 Page 10 - Latest vs Popular) */}
+      <div className="flex items-center justify-between px-1">
+        <div className="flex items-center space-x-1.5 bg-slate-100 p-1 rounded-2xl">
+          <button
+            type="button"
+            onClick={() => setSortOrder("latest")}
+            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              sortOrder === "latest"
+                ? "bg-white text-blue-600 shadow-xs"
+                : "text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5" />
+            <span>최신순 [Latest]</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setSortOrder("popular")}
+            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              sortOrder === "popular"
+                ? "bg-white text-rose-600 shadow-xs"
+                : "text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            <Flame className="w-3.5 h-3.5" />
+            <span>인기순 [Popular]</span>
+          </button>
+        </div>
+        <span className="text-[11px] font-semibold text-slate-400">
+          총 {posts.length}건
+        </span>
+      </div>
+
       {/* 피드 목록 (기획서 Page 10 - 인스타그램 피드 스타일) */}
       <div className="space-y-4">
-        {posts.map((post) => (
+        {sortCommunityPosts(posts, sortOrder).map((post) => (
           <div
             key={post.id}
             className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden"
@@ -326,20 +408,32 @@ export function CommunityFeedView() {
 
             {/* 본문 및 인터랙션 */}
             <div className="p-4 space-y-2">
-              <div className="flex items-center space-x-4 text-slate-600">
-                <button
-                  onClick={() => handleLike(post.id)}
-                  className={`flex items-center space-x-1 text-xs font-semibold transition-colors ${
-                    post.isLiked ? "text-rose-600" : "hover:text-rose-500"
-                  }`}
-                >
-                  <Heart className={`w-4 h-4 ${post.isLiked ? "fill-rose-600" : ""}`} />
-                  <span>{post.likes}</span>
-                </button>
-                <div className="flex items-center space-x-1 text-xs text-slate-400">
-                  <MessageSquare className="w-4 h-4" />
-                  <span>소통</span>
+              <div className="flex items-center justify-between text-slate-600">
+                <div className="flex items-center space-x-4">
+                  <button
+                    onClick={() => handleLike(post.id)}
+                    className={`flex items-center space-x-1 text-xs font-semibold transition-colors ${
+                      post.isLiked ? "text-rose-600" : "hover:text-rose-500"
+                    }`}
+                  >
+                    <Heart className={`w-4 h-4 ${post.isLiked ? "fill-rose-600" : ""}`} />
+                    <span>{post.likes}</span>
+                  </button>
+                  <div className="flex items-center space-x-1 text-xs text-slate-400">
+                    <MessageSquare className="w-4 h-4" />
+                    <span>소통</span>
+                  </div>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleSharePost(post)}
+                  className="flex items-center space-x-1 text-xs text-slate-400 hover:text-blue-600 transition-colors"
+                  title="게시글 공유"
+                >
+                  <Share2 className="w-4 h-4" />
+                  <span>공유</span>
+                </button>
               </div>
 
               <p className="text-xs leading-relaxed text-slate-800 font-normal">
@@ -352,7 +446,12 @@ export function CommunityFeedView() {
 
       {/* 게시글 신고 다이얼로그 모달 */}
       {reportingPost && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setReportingPost(null);
+          }}
+        >
           <div className="bg-white rounded-3xl p-5 max-w-xs w-full shadow-2xl space-y-4">
             <div className="flex items-center space-x-2 text-rose-600">
               <AlertTriangle className="w-5 h-5" />

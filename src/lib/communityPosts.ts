@@ -13,9 +13,25 @@ export interface CommunityPost {
   isOfficial?: boolean;
 }
 
+const OFFICIAL_ROLES = new Set(["사제", "수도자", "학사님", "신부님", "수녀님"]);
+
 export function isOfficialRole(role?: string): boolean {
   if (!role) return false;
-  return ["사제", "수도자", "학사님", "신부님", "수녀님"].some((r) => role.includes(r));
+  return OFFICIAL_ROLES.has(role.trim());
+}
+
+export type FeedSortOrder = "latest" | "popular";
+
+export function sortCommunityPosts(posts: CommunityPost[], sortOrder: FeedSortOrder): CommunityPost[] {
+  return [...posts].sort((a, b) => {
+    if (sortOrder === "popular") {
+      const likesDiff = (b.likes || 0) - (a.likes || 0);
+      if (likesDiff !== 0) return likesDiff;
+    }
+    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return timeB - timeA;
+  });
 }
 
 export const COMMUNITY_POSTS_STORAGE_KEY = "byd2026_community_posts";

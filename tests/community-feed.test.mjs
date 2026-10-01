@@ -241,6 +241,7 @@ describe("Community Feed Persistence (Issue #9)", () => {
     assert.equal(isOfficialRole("청년"), false);
     assert.equal(isOfficialRole("교리교사"), false);
     assert.equal(isOfficialRole("일반신자"), false);
+    assert.equal(isOfficialRole("수도자지망생"), false, "부분 문자열 오매칭 방어");
 
     // 5. createPostPayload 내 isOfficial 플래그 연동
     const priestPost = createPostPayload({
@@ -256,5 +257,42 @@ describe("Community Feed Persistence (Issue #9)", () => {
       content: "찬미예수님!",
     });
     assert.equal(youthPost.isOfficial, false);
+  });
+
+  test("DoD Issue #21 (정정): 최신순(Latest) 및 실시간 인기순(Popular) 정렬 엔진 검증", async () => {
+    const { sortCommunityPosts } = await import("../src/lib/communityPosts.ts");
+
+    const samplePosts = [
+      {
+        id: "post-old-popular",
+        content: "좋아요가 많은 옛날 글",
+        likes: 100,
+        createdAt: "2026-10-01T10:00:00Z",
+      },
+      {
+        id: "post-new-normal",
+        content: "방금 올라온 글",
+        likes: 5,
+        createdAt: "2026-10-01T12:00:00Z",
+      },
+      {
+        id: "post-mid-super",
+        content: "중간에 올라왔지만 최고 인기 글",
+        likes: 250,
+        createdAt: "2026-10-01T11:00:00Z",
+      },
+    ];
+
+    // 1. 최신순 (Latest): 시간 역순
+    const latestSorted = sortCommunityPosts(samplePosts, "latest");
+    assert.equal(latestSorted[0].id, "post-new-normal");
+    assert.equal(latestSorted[1].id, "post-mid-super");
+    assert.equal(latestSorted[2].id, "post-old-popular");
+
+    // 2. 인기순 (Popular): 좋아요 역순
+    const popularSorted = sortCommunityPosts(samplePosts, "popular");
+    assert.equal(popularSorted[0].id, "post-mid-super");
+    assert.equal(popularSorted[1].id, "post-old-popular");
+    assert.equal(popularSorted[2].id, "post-new-normal");
   });
 });
