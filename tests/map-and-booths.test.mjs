@@ -149,6 +149,10 @@ describe("Kakao Map & Booth Overlay Integrity (Issue #19)", () => {
     // 2. 카카오 SDK 로더 스크립트 태그 속성 계약
     assert.ok(content.includes("kakao-map-sdk"), "SDK 스크립트 id 계약(kakao-map-sdk)이 유지되어야 합니다.");
     assert.ok(content.includes("autoload=false"), "비동기 초기화를 위한 autoload=false 플래그가 있어야 합니다.");
+    assert.ok(
+      content.includes("dapi.kakao.com/v2/maps/sdk.js?appkey="),
+      "SDK 스크립트 src에 sdk.js?appkey= 엔드포인트가 포함되어야 브라우저 404가 방지됩니다."
+    );
 
     // 3. 스포원파크 4대 테마존 현장 배치도 폴백 및 부스 안내 연결 여부
     assert.ok(
