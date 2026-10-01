@@ -42,8 +42,13 @@ test.describe("현장지도 (/map) 라우트 및 카카오맵 연동 E2E", () =>
     await page.route("**/dapi.kakao.com/**", (route) => route.abort());
     await page.reload();
 
-    // 스크립트 에러 발생 시 안내 카드 및 에러 메시지 렌더링 확인
-    const errorMsg = page.locator("text=카카오맵").first();
-    await expect(errorMsg).toBeVisible({ timeout: 5000 });
+    // 1. 에러 안내 카드 렌더링 확인
+    const errorCard = page.locator("text=카카오 지도 로드 실패 (현장 배치도 대체)");
+    await expect(errorCard).toBeVisible({ timeout: 5000 });
+
+    // 2. 스포원파크 4대 방위 테마존 현장 배치도 폴백 렌더링 확인
+    await expect(page.locator("text=스포원파크 야외 분수광장 현장 배치도")).toBeVisible();
+    await expect(page.locator("text=북측 (재난대피소 앞)")).toBeVisible();
+    await expect(page.locator("text=남측 (실내체육관 방면)")).toBeVisible();
   });
 });
