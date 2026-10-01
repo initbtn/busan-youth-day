@@ -186,4 +186,113 @@ describe("Community Feed Persistence (Issue #9)", () => {
     assert.equal(formatTimeAgo(new Date(Date.now() - 3 * 3600 * 1000).toISOString()), "3시간 전");
     assert.equal(formatTimeAgo(new Date(Date.now() - 2 * 86400 * 1000).toISOString()), "2일 전");
   });
+
+  test("DoD Issue #21: Blob URL 저장 차단, 캐시 정제 및 공식 인증 배지(Official Role) 검증", async () => {
+    const {
+      createPostPayload,
+      loadCachedPosts,
+      isOfficialRole,
+      COMMUNITY_POSTS_STORAGE_KEY,
+    } = await import("../src/lib/communityPosts.ts");
+
+    // 1. Blob URL 인입 시 저장 차단 (undefined 처리)
+    const blobPost = createPostPayload({
+      author: "남도미니코",
+      parish: "중앙",
+      role: "청년",
+      content: "인증샷 올립니다!",
+      imageUrl: "blob:http://localhost:3000/1234-5678-uuid",
+    });
+    assert.equal(blobPost.imageUrl, undefined, "blob: URL은 휘발성이므로 영구 저장되지 않아야 함");
+
+    // 2. 정상 HTTP/HTTPS URL은 보존
+    const validPost = createPostPayload({
+      author: "김마리아",
+      parish: "하단",
+      role: "청년",
+      content: "정상 이미지 글",
+      imageUrl: "https://pub-r2.byd.dev/posts/real.jpg",
+    });
+    assert.equal(validPost.imageUrl, "https://pub-r2.byd.dev/posts/real.jpg");
+
+    // 3. 기존 캐시에 blob: 이미지가 남아있을 경우 loadCachedPosts에서 정제
+    global.localStorage.setItem(
+      COMMUNITY_POSTS_STORAGE_KEY,
+      JSON.stringify([
+        {
+          id: "corrupted-1",
+          author: "남도미니코",
+          content: "기존 깨진 글",
+          imageUrl: "blob:https://busan-youth-day.vercel.app/abc-123",
+          createdAt: new Date().toISOString(),
+        },
+      ])
+    );
+    const restored = loadCachedPosts();
+    assert.equal(restored.length, 1);
+    assert.equal(restored[0].imageUrl, undefined, "캐시 복원 시 blob: URL은 제거되어야 함");
+
+    // 4. 공식 인증 마크 (Official Role) 검증
+    assert.equal(isOfficialRole("사제"), true);
+    assert.equal(isOfficialRole("신부님"), true);
+    assert.equal(isOfficialRole("수도자"), true);
+    assert.equal(isOfficialRole("수녀님"), true);
+    assert.equal(isOfficialRole("학사님"), true);
+    assert.equal(isOfficialRole("청년"), false);
+    assert.equal(isOfficialRole("교리교사"), false);
+    assert.equal(isOfficialRole("일반신자"), false);
+    assert.equal(isOfficialRole("수도자지망생"), false, "부분 문자열 오매칭 방어");
+
+    // 5. createPostPayload 내 isOfficial 플래그 연동
+    const priestPost = createPostPayload({
+      author: "김대건 신부님",
+      role: "사제",
+      content: "평화를 빕니다.",
+    });
+    assert.equal(priestPost.isOfficial, true);
+
+    const youthPost = createPostPayload({
+      author: "이요한",
+      role: "청년",
+      content: "찬미예수님!",
+    });
+    assert.equal(youthPost.isOfficial, false);
+  });
+
+  test("DoD Issue #21 (정정): 최신순(Latest) 및 실시간 인기순(Popular) 정렬 엔진 검증", async () => {
+    const { sortCommunityPosts } = await import("../src/lib/communityPosts.ts");
+
+    const samplePosts = [
+      {
+        id: "post-old-popular",
+        content: "좋아요가 많은 옛날 글",
+        likes: 100,
+        createdAt: "2026-10-01T10:00:00Z",
+      },
+      {
+        id: "post-new-normal",
+        content: "방금 올라온 글",
+        likes: 5,
+        createdAt: "2026-10-01T12:00:00Z",
+      },
+      {
+        id: "post-mid-super",
+        content: "중간에 올라왔지만 최고 인기 글",
+        likes: 250,
+        createdAt: "2026-10-01T11:00:00Z",
+      },
+    ];
+
+    // 1. 최신순 (Latest): 시간 역순
+    const latestSorted = sortCommunityPosts(samplePosts, "latest");
+    assert.equal(latestSorted[0].id, "post-new-normal");
+    assert.equal(latestSorted[1].id, "post-mid-super");
+    assert.equal(latestSorted[2].id, "post-old-popular");
+
+    // 2. 인기순 (Popular): 좋아요 역순
+    const popularSorted = sortCommunityPosts(samplePosts, "popular");
+    assert.equal(popularSorted[0].id, "post-mid-super");
+    assert.equal(popularSorted[1].id, "post-old-popular");
+    assert.equal(popularSorted[2].id, "post-new-normal");
+  });
 });
