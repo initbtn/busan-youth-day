@@ -283,6 +283,18 @@ export async function fetchPostsFromSupabase(supabaseClient: unknown): Promise<C
   }
 }
 
+export function togglePostLike(post: CommunityPost): CommunityPost {
+  const willLike = !post.isLiked;
+  const currentLikes = typeof post.likes === "number" ? post.likes : 0;
+  const nextLikes = willLike ? currentLikes + 1 : Math.max(0, currentLikes - 1);
+
+  return {
+    ...post,
+    isLiked: willLike,
+    likes: nextLikes,
+  };
+}
+
 export function mergeCommunityPosts(
   remotePosts: CommunityPost[],
   localPosts: CommunityPost[],
@@ -293,16 +305,28 @@ export function mergeCommunityPosts(
   // 1. Initial 기본 게시글 등록
   initialFallback.forEach((p) => map.set(p.id, p));
 
-  // 2. 로컬 캐시 게시글 등록 (사용자가 오프라인/최근 작성한 것)
+  // 2. 로컬 캐시 게시글 등록 (사용자가 오프라인/최근 작성 및 좋아요 토글한 것)
   localPosts.forEach((p) => map.set(p.id, p));
 
-  // 3. Supabase 원격 게시글 등록 (원격이 최신 신뢰 정본)
+  // 3. Supabase 원격 게시글 등록
   remotePosts.forEach((p) => {
     const existing = map.get(p.id);
+    let resolvedLikes = typeof p.likes === "number" ? p.likes : 0;
+    let resolvedIsLiked = existing?.isLiked ?? p.isLiked ?? false;
+
+    // 만약 로컬에 기존 상호작용 기록이 있는 경우
+    if (existing) {
+      resolvedIsLiked = existing.isLiked ?? false;
+      // 로컬에서 좋아요 수가 변경되었거나 isLiked 상태가 정의되어 있으면 로컬의 likes 수치를 우선 보존
+      if (typeof existing.likes === "number") {
+        resolvedLikes = Math.max(0, existing.likes);
+      }
+    }
+
     map.set(p.id, {
       ...p,
-      // 로컬 좋아요 상태 보존
-      isLiked: existing?.isLiked ?? p.isLiked,
+      likes: resolvedLikes,
+      isLiked: resolvedIsLiked,
     });
   });
 
@@ -317,3 +341,4 @@ export function mergeCommunityPosts(
 
   return all;
 }
+

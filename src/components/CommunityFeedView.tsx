@@ -30,6 +30,7 @@ import {
   isOfficialRole,
   FeedSortOrder,
   sortCommunityPosts,
+  togglePostLike,
 } from "@/lib/communityPosts";
 
 export function CommunityFeedView() {
@@ -89,13 +90,7 @@ export function CommunityFeedView() {
   const handleLike = (id: string) => {
     setPosts((prev) => {
       const updated = prev.map((post) =>
-        post.id === id
-          ? {
-              ...post,
-              likes: post.isLiked ? post.likes - 1 : post.likes + 1,
-              isLiked: !post.isLiked,
-            }
-          : post
+        post.id === id ? togglePostLike(post) : post
       );
       cachePosts(updated);
       return updated;
@@ -425,13 +420,15 @@ export function CommunityFeedView() {
               <div className="flex items-center justify-between text-slate-600">
                 <div className="flex items-center space-x-4">
                   <button
+                    data-testid="like-button"
+                    data-post-id={post.id}
                     onClick={() => handleLike(post.id)}
                     className={`flex items-center space-x-1 text-xs font-semibold transition-colors ${
                       post.isLiked ? "text-rose-600" : "hover:text-rose-500"
                     }`}
                   >
                     <Heart className={`w-4 h-4 ${post.isLiked ? "fill-rose-600" : ""}`} />
-                    <span>{post.likes}</span>
+                    <span data-testid="like-count">{post.likes}</span>
                   </button>
                   <div className="flex items-center space-x-1 text-xs text-slate-400">
                     <MessageSquare className="w-4 h-4" />

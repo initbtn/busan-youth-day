@@ -63,4 +63,50 @@ test.describe("커뮤니티 피드 영구 보존 및 새로고침 E2E (Issue #9 
     await refreshBtn.click();
     await expect(page.locator(`text=${uniqueContent}`)).toBeVisible();
   });
+
+  test("DoD Issue #25: 좋아요 토글(+1 / -1) 및 브라우저 새로고침 후 수치 롤백 방지 E2E", async ({
+    page,
+  }) => {
+    // 1. 소통피드 탭으로 이동
+    const feedTabButton = page.locator("nav button:has-text('소통피드')");
+    await feedTabButton.click();
+
+    // 2. 피드 로드 대기
+    await expect(page.locator("h2:has-text('#2026BYD')")).toBeVisible({ timeout: 5000 });
+
+    // 3. 첫 번째 게시글의 좋아요 버튼 및 카운트 요소 식별
+    const firstLikeBtn = page.locator("button[data-testid='like-button']").first();
+    await expect(firstLikeBtn).toBeVisible();
+
+    const likeCountSpan = firstLikeBtn.locator("[data-testid='like-count']");
+    const initialCountText = await likeCountSpan.innerText();
+    const initialCount = parseInt(initialCountText, 10);
+
+    // 4. 좋아요 클릭 (+1 검증)
+    await firstLikeBtn.click();
+    await expect(likeCountSpan).toHaveText(String(initialCount + 1));
+    await expect(firstLikeBtn).toHaveClass(/text-rose-600/);
+
+    // 5. 브라우저 새로고침(F5) 후에도 증가된 좋아요 수와 상태 유지 검증 (수치 롤백 방어)
+    await page.reload();
+    await page.locator("nav button:has-text('소통피드')").click();
+
+    const reloadedLikeBtn = page.locator("button[data-testid='like-button']").first();
+    const reloadedCountSpan = reloadedLikeBtn.locator("[data-testid='like-count']");
+    await expect(reloadedCountSpan).toHaveText(String(initialCount + 1));
+    await expect(reloadedLikeBtn).toHaveClass(/text-rose-600/);
+
+    // 6. 좋아요 재클릭 (취소 -1 검증)
+    await reloadedLikeBtn.click();
+    await expect(reloadedCountSpan).toHaveText(String(initialCount));
+    await expect(reloadedLikeBtn).not.toHaveClass(/text-rose-600/);
+
+    // 7. 다시 새로고침 후에도 취소된 수치가 원본으로 롤백되지 않는지 검증
+    await page.reload();
+    await page.locator("nav button:has-text('소통피드')").click();
+
+    const finalLikeBtn = page.locator("button[data-testid='like-button']").first();
+    const finalCountSpan = finalLikeBtn.locator("[data-testid='like-count']");
+    await expect(finalCountSpan).toHaveText(String(initialCount));
+  });
 });
