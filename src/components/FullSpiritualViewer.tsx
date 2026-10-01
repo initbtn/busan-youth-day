@@ -63,6 +63,8 @@ export function FullSpiritualViewer({ type, onClose }: FullSpiritualViewerProps)
           <button
             onClick={onClose}
             className="p-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition-colors ml-1"
+            title="닫기"
+            aria-label="닫기"
           >
             <X className="w-4 h-4" />
           </button>
