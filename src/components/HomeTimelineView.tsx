@@ -5,8 +5,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { useUser } from "@/context/UserContext";
 import { EVENT_SCHEDULE } from "@/data/schedule";
-import { FullSpiritualViewer } from "@/components/FullSpiritualViewer";
-import { OfficialBoothStageGuide } from "@/components/OfficialBoothStageGuide";
 import {
   Calendar,
   MapPin,
@@ -18,8 +16,6 @@ import {
 export function HomeTimelineView() {
   const { user, isLeader, parishNotices, updateParishNotice } = useUser();
   const [selectedDay, setSelectedDay] = useState<15 | 16 | 17>(15);
-  const [spiritualViewer, setSpiritualViewer] = useState<"prayer" | "song" | "saints" | null>(null);
-  const [isMapGuideOpen, setIsMapGuideOpen] = useState(false);
 
   // 본당 CMS 공지 작성 상태
   const userParish = user?.parish || "하단";
@@ -47,13 +43,13 @@ export function HomeTimelineView() {
             4대 테마존 부스에서 QR 스탬프 꾹! 도장을 모아 한정판 굿즈를 교환받으세요.
           </p>
           <div className="pt-1 flex items-center space-x-2">
-            <button
-              onClick={() => setIsMapGuideOpen(true)}
+            <Link
+              href="/map"
               className="px-3 py-1.5 bg-white text-orange-600 text-xs font-bold rounded-xl shadow-xs hover:bg-orange-50 transition-colors flex items-center space-x-1"
             >
               <MapPin className="w-3.5 h-3.5 text-orange-600" />
               <span>현장지도</span>
-            </button>
+            </Link>
             <Link
               href="/seating"
               className="px-3 py-1.5 bg-white/90 text-orange-700 text-xs font-bold rounded-xl shadow-xs hover:bg-white transition-colors"
@@ -194,8 +190,8 @@ export function HomeTimelineView() {
         </div>
 
         <div className="grid grid-cols-3 gap-2">
-          <div
-            onClick={() => setSpiritualViewer("prayer")}
+          <Link
+            href="/prayer"
             className="cursor-pointer bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-2xl p-3 shadow-md shadow-blue-100 hover:shadow-lg transition-all flex flex-col justify-between"
           >
             <span className="text-xl mb-3">📜</span>
@@ -203,10 +199,10 @@ export function HomeTimelineView() {
               <h4 className="text-xs font-bold leading-tight">WYD 공식 기도</h4>
               <p className="text-[9px] text-blue-100/90 mt-0.5">상본 앞/뒤</p>
             </div>
-          </div>
+          </Link>
 
-          <div
-            onClick={() => setSpiritualViewer("saints")}
+          <Link
+            href="/saints"
             className="cursor-pointer bg-gradient-to-br from-orange-500 to-rose-500 text-white rounded-2xl p-3 shadow-md shadow-orange-100 hover:shadow-lg transition-all flex flex-col justify-between"
           >
             <span className="text-xl mb-3">🕊️</span>
@@ -214,10 +210,10 @@ export function HomeTimelineView() {
               <h4 className="text-xs font-bold leading-tight">수호성인 5인</h4>
               <p className="text-[9px] text-orange-100/90 mt-0.5">소개 & 기도</p>
             </div>
-          </div>
+          </Link>
 
-          <div
-            onClick={() => setSpiritualViewer("song")}
+          <Link
+            href="/song"
             className="cursor-pointer bg-gradient-to-br from-amber-500 to-yellow-600 text-white rounded-2xl p-3 shadow-md shadow-amber-100 hover:shadow-lg transition-all flex flex-col justify-between"
           >
             <span className="text-xl mb-3">🎵</span>
@@ -225,7 +221,7 @@ export function HomeTimelineView() {
               <h4 className="text-xs font-bold leading-tight">하느님 나라에</h4>
               <p className="text-[9px] text-amber-100/90 mt-0.5">공식 악보</p>
             </div>
-          </div>
+          </Link>
         </div>
       </div>
 
@@ -278,17 +274,6 @@ export function HomeTimelineView() {
           ))}
         </div>
       </div>
-
-      {/* 전면 고화질 영적 뷰어 및 지도 모달 */}
-      <FullSpiritualViewer
-        type={spiritualViewer}
-        onClose={() => setSpiritualViewer(null)}
-      />
-      <OfficialBoothStageGuide
-        isOpen={isMapGuideOpen}
-        onClose={() => setIsMapGuideOpen(false)}
-        defaultTab="map"
-      />
     </div>
   );
 }

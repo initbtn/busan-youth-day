@@ -6,7 +6,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useUser, UserProvider } from "@/context/UserContext";
 import { OnboardingModal } from "@/components/OnboardingModal";
-import { OfficialBoothStageGuide } from "@/components/OfficialBoothStageGuide";
 import {
   MapPin,
   Compass,
@@ -24,7 +23,6 @@ function TabsLayoutContent({
   const { user } = useUser();
   const pathname = usePathname();
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
-  const [isMapGuideOpen, setIsMapGuideOpen] = useState(false);
 
   // 최초 방문 시 온보딩 모달 오픈
   useEffect(() => {
@@ -50,13 +48,13 @@ function TabsLayoutContent({
           <span className="truncate">스포원파크 부스 QR 스캔하고 현장 굿즈 교환받자! 🍞🐟</span>
         </div>
         <div className="flex items-center space-x-1 flex-shrink-0 ml-2">
-          <button
-            onClick={() => setIsMapGuideOpen(true)}
+          <Link
+            href="/map"
             className="text-[11px] underline font-bold bg-black/10 px-2 py-0.5 rounded-full flex items-center space-x-0.5"
           >
             <Map className="w-3 h-3 inline mr-0.5" />
             <span>현장지도</span>
-          </button>
+          </Link>
           <Link
             href="/seating"
             className="text-[11px] underline font-bold bg-black/10 px-2 py-0.5 rounded-full"
@@ -183,11 +181,6 @@ function TabsLayoutContent({
 
       {/* 전역 모달 */}
       <OnboardingModal isOpen={isOnboardingOpen} onClose={() => setIsOnboardingOpen(false)} />
-      <OfficialBoothStageGuide
-        isOpen={isMapGuideOpen}
-        onClose={() => setIsMapGuideOpen(false)}
-        defaultTab="map"
-      />
     </div>
   );
 }
