@@ -107,4 +107,30 @@ describe("Kakao Map & Booth Overlay Integrity (Issue #19)", () => {
       assert.equal(p.isSacrament, true);
     });
   });
+
+  // 4. (TDD RED) 야외 분수광장 4대 테마존 구역 블록 및 배치도 모델 검증
+  test("DoD 4: 야외 분수광장 4대 방위 구역 블록(FOUNTAIN_ZONE_BLOCKS) 데이터 및 좌표 무결성 검증", async () => {
+    const { FOUNTAIN_ZONE_BLOCKS } = await import("../src/data/boothLocations.ts");
+
+    assert.ok(FOUNTAIN_ZONE_BLOCKS, "FOUNTAIN_ZONE_BLOCKS가 정의되어 있어야 합니다.");
+    assert.equal(FOUNTAIN_ZONE_BLOCKS.length, 4);
+
+    const north = FOUNTAIN_ZONE_BLOCKS.find((b) => b.direction === "north");
+    const east = FOUNTAIN_ZONE_BLOCKS.find((b) => b.direction === "east");
+    const west = FOUNTAIN_ZONE_BLOCKS.find((b) => b.direction === "west");
+    const south = FOUNTAIN_ZONE_BLOCKS.find((b) => b.direction === "south");
+
+    assert.ok(north && north.zoneId === "sharing", "북측은 나눔존이어야 합니다.");
+    assert.ok(east && east.zoneId === "love", "동측은 사랑존이어야 합니다.");
+    assert.ok(west && west.zoneId === "faith", "서측은 믿음존이어야 합니다.");
+    assert.ok(south && south.zoneId === "hope", "남측은 희망존이어야 합니다.");
+
+    FOUNTAIN_ZONE_BLOCKS.forEach((block) => {
+      assert.ok(block.coordinates && block.coordinates.length >= 3, "폴리곤 좌표가 최소 3개 이상이어야 합니다.");
+      assert.ok(block.centerLat >= 35.27 && block.centerLat <= 35.29);
+      assert.ok(block.centerLng >= 129.09 && block.centerLng <= 129.11);
+      assert.ok(block.color && block.color.length > 0);
+      assert.ok(block.boothCount > 0);
+    });
+  });
 });

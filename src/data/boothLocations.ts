@@ -159,3 +159,121 @@ export const SPOWON_MAP_POINTS: MapPoint[] = [
   ...SACRAMENT_POINTS,
   ...ZONE_CENTER_POINTS,
 ];
+
+// =============================================================================
+// 야외 분수광장 4대 테마존 부스 블록 및 배치도 (공식 안내문 배치도 기반)
+// =============================================================================
+export interface FountainZoneBlock {
+  id: string;
+  zoneId: "faith" | "hope" | "love" | "sharing";
+  name: string;
+  koreanName: string;
+  direction: "north" | "east" | "west" | "south";
+  centerLat: number;
+  centerLng: number;
+  // 카카오맵 폴리곤 꼭짓점 좌표 (위경도 배열)
+  coordinates: { lat: number; lng: number }[];
+  color: string; // Tailwind hex or css
+  fillColor: string;
+  strokeColor: string;
+  boothRange: string;
+  boothCount: number;
+  keyFacilities: string[];
+  description: string;
+}
+
+// 분수광장 중심(35.28173, 129.09845) 둘레의 4대 테마존 사각 블록
+export const FOUNTAIN_ZONE_BLOCKS: FountainZoneBlock[] = [
+  // 1. 북측: 나눔존 (2개 블록 및 굿즈/플리마켓)
+  {
+    id: "fountain-block-north",
+    zoneId: "sharing",
+    name: "Sharing Zone",
+    koreanName: "나눔존",
+    direction: "north",
+    centerLat: 35.28215,
+    centerLng: 129.09845,
+    coordinates: [
+      { lat: 35.28230, lng: 129.09795 },
+      { lat: 35.28230, lng: 129.09895 },
+      { lat: 35.28200, lng: 129.09895 },
+      { lat: 35.28200, lng: 129.09795 },
+    ],
+    color: "#059669", // emerald-600
+    fillColor: "#10B981",
+    strokeColor: "#047857",
+    boothRange: "나눔 1 ~ 10번",
+    boothCount: 10,
+    keyFacilities: ["가톨릭 굿즈", "바오로딸 서원", "플리마켓"],
+    description: "굿즈, 서적, 성물과 플리마켓으로 풍성한 나눔 광장",
+  },
+  // 2. 동측: 사랑존 (상/하 31개 부스 + 식수대)
+  {
+    id: "fountain-block-east",
+    zoneId: "love",
+    name: "Love Zone",
+    koreanName: "사랑존",
+    direction: "east",
+    centerLat: 35.28173,
+    centerLng: 129.09915,
+    coordinates: [
+      { lat: 35.28210, lng: 129.09890 },
+      { lat: 35.28210, lng: 129.09940 },
+      { lat: 35.28135, lng: 129.09940 },
+      { lat: 35.28135, lng: 129.09890 },
+    ],
+    color: "#E11D48", // rose-600
+    fillColor: "#F43F5E",
+    strokeColor: "#BE123C",
+    boothRange: "사랑 1 ~ 31번",
+    boothCount: 31,
+    keyFacilities: ["세례성사(13번)", "견진성사(29번)", "성체성사(30번)", "식수 배부처"],
+    description: "이웃 사랑과 헌신, 나눔을 배우는 은총의 공간 (7성사 3개)",
+  },
+  // 3. 서측: 믿음존 (19개 부스 + 식수, 의료지원, 본부)
+  {
+    id: "fountain-block-west",
+    zoneId: "faith",
+    name: "Faith Zone",
+    koreanName: "믿음존",
+    direction: "west",
+    centerLat: 35.28173,
+    centerLng: 129.09775,
+    coordinates: [
+      { lat: 35.28210, lng: 129.09750 },
+      { lat: 35.28210, lng: 129.09800 },
+      { lat: 35.28135, lng: 129.09800 },
+      { lat: 35.28135, lng: 129.09750 },
+    ],
+    color: "#2563EB", // blue-600
+    fillColor: "#3B82F6",
+    strokeColor: "#1D4ED8",
+    boothRange: "믿음 1 ~ 19번",
+    boothCount: 19,
+    keyFacilities: ["성품성사(11번)", "혼인성사(14번)", "식수대", "의료지원", "운영본부"],
+    description: "교구 수도회와 청년 단체들이 신앙의 기쁨을 전하는 부스 (7성사 2개)",
+  },
+  // 4. 남측: 희망존 (21개 부스 + 믿음 연계 + 상품 수령처)
+  {
+    id: "fountain-block-south",
+    zoneId: "hope",
+    name: "Hope Zone",
+    koreanName: "희망존",
+    direction: "south",
+    centerLat: 35.28130,
+    centerLng: 129.09845,
+    coordinates: [
+      { lat: 35.28145, lng: 129.09795 },
+      { lat: 35.28145, lng: 129.09895 },
+      { lat: 35.28115, lng: 129.09895 },
+      { lat: 35.28115, lng: 129.09795 },
+    ],
+    color: "#EA580C", // orange-600
+    fillColor: "#F97316",
+    strokeColor: "#C2410C",
+    boothRange: "희망 1 ~ 21번",
+    boothCount: 21,
+    keyFacilities: ["고해성사(16번)", "병자성사(17번)", "공식 상품 수령처", "성소국"],
+    description: "생명과 사랑의 복음을 체험하는 희망의 공간 (7성사 2개)",
+  },
+];
