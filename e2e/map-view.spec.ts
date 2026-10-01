@@ -51,4 +51,17 @@ test.describe("현장지도 (/map) 라우트 및 카카오맵 연동 E2E", () =>
     await expect(page.locator("text=북측 (재난대피소 앞)")).toBeVisible();
     await expect(page.locator("text=남측 (실내체육관 방면)")).toBeVisible();
   });
+
+  test("DoD 4: 카카오맵 SDK 요청 URL 규약(sdk.js?appkey=) 인터셉트 검증", async ({ page }) => {
+    let requestedSdkUrl = "";
+    await page.route("**/dapi.kakao.com/**", (route) => {
+      requestedSdkUrl = route.request().url();
+      route.abort();
+    });
+    await page.reload();
+
+    expect(requestedSdkUrl).toContain("dapi.kakao.com/v2/maps/sdk.js?appkey=");
+    expect(requestedSdkUrl).toContain("autoload=false");
+  });
 });
+

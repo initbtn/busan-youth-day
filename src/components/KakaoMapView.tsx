@@ -320,7 +320,7 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
     } else {
       const script = document.createElement("script");
       script.id = "kakao-map-sdk";
-      script.src = `//dapi.kakao.com/v2/maps/appkey=${apiKey}&autoload=false`;
+      script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${apiKey}&autoload=false`;
       script.async = true;
       script.onload = initializeMap;
       script.onerror = handleScriptError;
