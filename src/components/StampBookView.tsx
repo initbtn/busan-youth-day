@@ -111,6 +111,53 @@ export function StampBookView() {
         </button>
       </div>
 
+      {/* 30초 동적 QR 굿즈 교환권 (보물 5개 또는 부스 9개 달성 시 - 기획서 Page 9 & PRD §5.1) */}
+      {hasRewardCoupon && (
+        <div className="bg-gradient-to-br from-amber-500 to-orange-500 text-white rounded-3xl p-5 shadow-xl relative overflow-hidden">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center space-x-2">
+              <Gift className="w-5 h-5 text-amber-100" />
+              <span className="text-xs font-bold uppercase tracking-wider text-amber-100">
+                Official Reward Voucher
+              </span>
+            </div>
+            <span className="text-xs font-bold px-2 py-0.5 bg-white/20 rounded-full">
+              30초 갱신 보안 모듈
+            </span>
+          </div>
+
+          <div className="bg-white text-slate-900 rounded-2xl p-4 flex flex-col items-center shadow-inner">
+            <span className="text-xs font-bold text-slate-500 mb-1">BYD 현장 굿즈 교환권</span>
+            {isRewardEligible ? (
+              <>
+                <div className="w-36 h-36 bg-slate-50 rounded-xl border border-slate-200 flex flex-col items-center justify-center p-2 relative">
+                  <QrCode className="w-28 h-28 text-slate-800" />
+                  <div className="absolute inset-0 flex items-center justify-center opacity-10 font-mono text-[9px] pointer-events-none break-all text-center">
+                    BYD-VOUCHER-{couponSeconds}-{Date.now().toString().slice(-4)}
+                  </div>
+                </div>
+                <div className="mt-2 text-center">
+                  <div className="text-xs font-semibold text-rose-600">
+                    유효시간: {couponSeconds}초
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    캡처 화면 공유 방지를 위해 30초마다 동적 갱신됩니다.
+                  </p>
+                </div>
+              </>
+            ) : (
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-center space-y-2">
+                <span className="text-xs font-bold text-slate-700 block">선물 수령 대상 안내</span>
+                <p className="text-[11px] text-slate-500 leading-relaxed">
+                  현장 굿즈 수령 대상자는 <strong>초등부, 중고등부, 청년, 교리교사</strong>입니다.<br />
+                  완주를 축하드리며, 함께해 주셔서 진심으로 감사드립니다! 🙏
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* 트랙 1: 공식 부스 9개 스탬프 뷰 */}
       {activeSubTab === "official" && (
         <div className="space-y-4">
@@ -167,54 +214,7 @@ export function StampBookView() {
             )}
           </div>
 
-      {/* 30초 동적 QR 굿즈 교환권 (보물 5개 또는 부스 9개 달성 시 - 기획서 Page 9 & PRD §5.1) */}
-      {hasRewardCoupon && (
-        <div className="bg-gradient-to-br from-amber-500 to-orange-500 text-white rounded-3xl p-5 shadow-xl relative overflow-hidden">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center space-x-2">
-              <Gift className="w-5 h-5 text-amber-100" />
-              <span className="text-xs font-bold uppercase tracking-wider text-amber-100">
-                Official Reward Voucher
-              </span>
-            </div>
-            <span className="text-xs font-bold px-2 py-0.5 bg-white/20 rounded-full">
-              30초 갱신 보안 모듈
-            </span>
-          </div>
-
-          <div className="bg-white text-slate-900 rounded-2xl p-4 flex flex-col items-center shadow-inner">
-            <span className="text-xs font-bold text-slate-500 mb-1">BYD 현장 굿즈 교환권</span>
-            {isRewardEligible ? (
-              <>
-                <div className="w-36 h-36 bg-slate-50 rounded-xl border border-slate-200 flex flex-col items-center justify-center p-2 relative">
-                  <QrCode className="w-28 h-28 text-slate-800" />
-                  <div className="absolute inset-0 flex items-center justify-center opacity-10 font-mono text-[9px] pointer-events-none break-all text-center">
-                    BYD-VOUCHER-{couponSeconds}-{Date.now().toString().slice(-4)}
-                  </div>
-                </div>
-                <div className="mt-2 text-center">
-                  <div className="text-xs font-semibold text-rose-600">
-                    유효시간: {couponSeconds}초
-                  </div>
-                  <p className="text-[10px] text-slate-400 mt-0.5">
-                    캡처 화면 공유 방지를 위해 30초마다 동적 갱신됩니다.
-                  </p>
-                </div>
-              </>
-            ) : (
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-center space-y-2">
-                <span className="text-xs font-bold text-slate-700 block">선물 수령 대상 안내</span>
-                <p className="text-[11px] text-slate-500 leading-relaxed">
-                  현장 굿즈 수령 대상자는 <strong>초등부, 중고등부, 청년, 교리교사</strong>입니다.<br />
-                  완주를 축하드리며, 함께해 주셔서 진심으로 감사드립니다! 🙏
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* 9개 스탬프 슬롯 그리드 (목업 Page 8 기반) */}
+          {/* 9개 스탬프 슬롯 그리드 (목업 Page 8 기반) */}
           <div className="space-y-3">
             <h3 className="text-sm font-bold text-slate-900 px-1">4대 테마존 스탬프 현황</h3>
             <div className="grid grid-cols-3 gap-2.5">
