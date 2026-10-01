@@ -298,12 +298,20 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
       });
     };
 
+    const handleScriptError = () => {
+      if (isMounted) {
+        setLoadError("카카오 지도 SDK를 불러오지 못했습니다. 카카오 개발자 콘솔의 지도 활성화 및 사이트 도메인 등록 상태를 확인해 주세요.");
+        setIsLoading(false);
+      }
+    };
+
     const existingScript = document.getElementById("kakao-map-sdk");
     if (existingScript) {
       if (window.kakao?.maps) {
         initializeMap();
       } else {
         existingScript.addEventListener("load", initializeMap);
+        existingScript.addEventListener("error", handleScriptError);
       }
     } else {
       const script = document.createElement("script");
@@ -311,12 +319,7 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
       script.src = `//dapi.kakao.com/v2/maps/appkey=${apiKey}&autoload=false`;
       script.async = true;
       script.onload = initializeMap;
-      script.onerror = () => {
-        if (isMounted) {
-          setLoadError("카카오 지도 SDK를 불러오지 못했습니다. 카카오 개발자 콘솔의 지도 활성화 및 사이트 도메인 등록 상태를 확인해 주세요.");
-          setIsLoading(false);
-        }
-      };
+      script.onerror = handleScriptError;
       document.head.appendChild(script);
     }
 
@@ -324,6 +327,7 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
       isMounted = false;
       if (existingScript) {
         existingScript.removeEventListener("load", initializeMap);
+        existingScript.removeEventListener("error", handleScriptError);
       }
     };
   }, [apiKey, initialSelectedId, handleSelectPoint]);
