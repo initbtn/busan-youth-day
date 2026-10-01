@@ -31,6 +31,18 @@ export function HomeTimelineView() {
 
   return (
     <div className="space-y-5">
+      {/* 2026 BYD 공식 행사 히어로 배너 */}
+      <div className="relative w-full aspect-[1920/577] rounded-3xl overflow-hidden shadow-sm border border-orange-100 bg-orange-50">
+        <Image
+          src="/assets/banners/byd-hero-banner.webp"
+          alt="2026 부산교구 청년의 날 공식 배너"
+          fill
+          priority
+          sizes="(max-width: 768px) 100vw, 672px"
+          className="object-cover"
+        />
+      </div>
+
       {/* 공식 마스코트 '쭈양이' 웰컴 카드 */}
       <div className="bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 rounded-3xl p-5 text-white shadow-md relative overflow-hidden flex items-center justify-between">
         <div className="space-y-1.5 z-10 max-w-[65%]">

@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import {
   Bus,
   Car,
@@ -10,6 +11,18 @@ import {
 export function EventInfoView() {
   return (
     <div className="space-y-5 text-xs leading-relaxed">
+      {/* 2026 부산교구 사목지침 공식 배너 */}
+      <div className="relative w-full aspect-[1920/578] rounded-3xl overflow-hidden shadow-sm border border-slate-100 bg-slate-50">
+        <Image
+          src="/assets/banners/pastoral-guidelines-banner.webp"
+          alt="2026년 교구 사목지침 공식 배너"
+          fill
+          priority
+          sizes="(max-width: 768px) 100vw, 672px"
+          className="object-cover"
+        />
+      </div>
+
       {/* 행사장 3대 구역 안내 카드 (공문 2페이지) */}
       <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm space-y-3">
         <span className="text-xs font-bold text-slate-500 block">스포원파크 행사장 3대 구역</span>
