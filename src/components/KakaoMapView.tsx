@@ -1,7 +1,14 @@
 "use client";
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { SPOWON_CENTER, SPOWON_MAP_POINTS, MapPoint } from "@/data/boothLocations";
+import {
+  SPOWON_CENTER,
+  SPOWON_MAP_POINTS,
+  FOUNTAIN_ZONE_BLOCKS,
+  MapPoint,
+  FountainZoneBlock,
+} from "@/data/boothLocations";
+import { OFFICIAL_ZONES } from "@/data/officialBooths";
 import {
   Sparkles,
   Crosshair,
@@ -9,6 +16,7 @@ import {
   AlertCircle,
   X,
   Navigation,
+  Layers,
 } from "lucide-react";
 
 interface KakaoOverlayItem {
@@ -32,12 +40,15 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<KakaoOverlayItem[]>([]);
+  const polygonsRef = useRef<KakaoOverlayItem[]>([]);
   const userLocationOverlayRef = useRef<KakaoOverlayItem | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedPoint, setSelectedPoint] = useState<MapPoint | null>(null);
+  const [selectedBlock, setSelectedBlock] = useState<FountainZoneBlock | null>(null);
   const [activeFilter, setActiveFilter] = useState<"all" | "sacrament" | "zone" | "facility">("all");
+  const [showZonePolygons, setShowZonePolygons] = useState(true);
   const [isLocating, setIsLocating] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 
@@ -45,6 +56,7 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
 
   const handleSelectPoint = useCallback(
     (point: MapPoint) => {
+      setSelectedBlock(null);
       setSelectedPoint(point);
       if (onSelectPoint) onSelectPoint(point);
 
@@ -56,7 +68,80 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
     [onSelectPoint]
   );
 
-  // 마커 렌더링 함수
+  const handleSelectBlock = useCallback((block: FountainZoneBlock) => {
+    setSelectedPoint(null);
+    setSelectedBlock(block);
+
+    if (mapInstanceRef.current && window.kakao?.maps) {
+      const moveLatLon = new window.kakao.maps.LatLng(block.centerLat, block.centerLng);
+      mapInstanceRef.current.panTo(moveLatLon);
+    }
+  }, []);
+
+  // 1. 4대 테마존 폴리곤 및 구역 명칭 오버레이 렌더링
+  const renderZoneBlocks = useCallback(() => {
+    if (!mapInstanceRef.current || !window.kakao?.maps) return;
+
+    polygonsRef.current.forEach((item) => {
+      if (item.setMap) item.setMap(null);
+    });
+    polygonsRef.current = [];
+
+    if (!showZonePolygons) return;
+
+    const map = mapInstanceRef.current;
+
+    FOUNTAIN_ZONE_BLOCKS.forEach((block) => {
+      // 1-1. 카카오 지도 폴리곤 생성
+      const path = block.coordinates.map(
+        (c) => new window.kakao.maps.LatLng(c.lat, c.lng)
+      );
+
+      const polygon = new window.kakao.maps.Polygon({
+        path,
+        strokeWeight: 2,
+        strokeColor: block.strokeColor,
+        strokeOpacity: 0.8,
+        fillColor: block.fillColor,
+        fillOpacity: 0.22,
+      });
+
+      polygon.setMap(map);
+      polygonsRef.current.push(polygon);
+
+      // 폴리곤 클릭 시 구역 상세 바텀시트 오픈
+      window.kakao.maps.event.addListener(polygon, "click", () => {
+        handleSelectBlock(block);
+      });
+
+      // 1-2. 구역 중심 텍스트 뱃지 오버레이
+      const position = new window.kakao.maps.LatLng(block.centerLat, block.centerLng);
+      const content = document.createElement("div");
+      content.className =
+        "cursor-pointer group flex flex-col items-center transform -translate-x-1/2 -translate-y-1/2 transition-transform hover:scale-105 active:scale-95";
+      content.innerHTML = `
+        <div class="px-2.5 py-1 rounded-xl shadow-md text-[11px] font-black flex items-center space-x-1 border border-white/80 text-white" style="background-color: ${block.color};">
+          <span>${block.koreanName}</span>
+          <span class="text-[9px] font-normal opacity-90">(${block.boothCount}개)</span>
+        </div>
+      `;
+
+      content.addEventListener("click", () => {
+        handleSelectBlock(block);
+      });
+
+      const overlay = new window.kakao.maps.CustomOverlay({
+        position,
+        content,
+        zIndex: 2,
+      });
+
+      overlay.setMap(map);
+      polygonsRef.current.push(overlay);
+    });
+  }, [showZonePolygons, handleSelectBlock]);
+
+  // 2. 부스 핀 마커 렌더링 함수
   const renderMarkers = useCallback(
     (filter: "all" | "sacrament" | "zone" | "facility") => {
       if (!mapInstanceRef.current || !window.kakao?.maps) return;
@@ -126,6 +211,7 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
           position,
           content,
           yAnchor: 1,
+          zIndex: point.isSacrament ? 5 : 3,
         });
 
         customOverlay.setMap(map);
@@ -135,7 +221,7 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
     [handleSelectPoint]
   );
 
-  // 사용자 위치 오버레이 렌더링
+  // 3. 사용자 위치 오버레이 렌더링
   const renderUserLocation = useCallback((lat: number, lng: number) => {
     if (!mapInstanceRef.current || !window.kakao?.maps) return;
 
@@ -165,7 +251,7 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
     userLocationOverlayRef.current = userOverlay;
   }, []);
 
-  // 1. 카카오 지도 SDK 초기 1회 로드 및 지도 인스턴스 마운트
+  // 4. 카카오 지도 SDK 초기 1회 로드 및 지도 인스턴스 마운트
   useEffect(() => {
     if (!apiKey) {
       setLoadError("카카오맵 API 키가 설정되지 않았습니다. 현장 기본 배치도를 표시합니다.");
@@ -242,14 +328,15 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
     };
   }, [apiKey, initialSelectedId, handleSelectPoint]);
 
-  // 2. 필터 변경 시 마커만 업데이트 (맵 재생성 방지)
+  // 5. 필터 변경 시 마커 업데이트
   useEffect(() => {
     if (!isLoading && !loadError && mapInstanceRef.current) {
       renderMarkers(activeFilter);
+      renderZoneBlocks();
     }
-  }, [activeFilter, isLoading, loadError, renderMarkers]);
+  }, [activeFilter, showZonePolygons, isLoading, loadError, renderMarkers, renderZoneBlocks]);
 
-  // 3. 사용자 위치 오버레이 갱신
+  // 6. 사용자 위치 오버레이 갱신
   useEffect(() => {
     if (userLocation) {
       renderUserLocation(userLocation.lat, userLocation.lng);
@@ -299,9 +386,14 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
     window.open(url, "_blank");
   };
 
+  // 선택된 구역 블록의 상세 부스 데이터 조회
+  const selectedZoneData = selectedBlock
+    ? OFFICIAL_ZONES.find((z) => z.id === selectedBlock.zoneId)
+    : null;
+
   return (
-    <div className="relative w-full h-[460px] rounded-3xl overflow-hidden border border-slate-200 shadow-inner bg-slate-100 flex flex-col">
-      {/* 1. 상단 필터 바 */}
+    <div className="relative w-full h-[480px] rounded-3xl overflow-hidden border border-slate-200 shadow-inner bg-slate-100 flex flex-col">
+      {/* 1. 상단 필터 & 오버레이 토글 바 */}
       <div className="absolute top-3 left-3 right-3 z-10 flex items-center justify-between gap-1 pointer-events-none">
         <div className="flex items-center space-x-1 bg-white/95 backdrop-blur-md p-1 rounded-2xl shadow-md border border-slate-200/80 pointer-events-auto overflow-x-auto text-[11px] font-bold">
           <button
@@ -339,8 +431,19 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
           </button>
         </div>
 
-        {/* 내 위치 및 광장 중심 컨트롤 그룹 */}
+        {/* 컨트롤 그룹 (구역 블록 토글, 내 위치, 중심 리셋) */}
         <div className="flex items-center space-x-1 pointer-events-auto">
+          <button
+            onClick={() => setShowZonePolygons((prev) => !prev)}
+            className={`p-2.5 rounded-2xl shadow-md border border-slate-200/80 transition-colors ${
+              showZonePolygons
+                ? "bg-orange-500 text-white border-orange-500"
+                : "bg-white/95 text-slate-700 hover:bg-slate-50"
+            }`}
+            title="4대 테마존 구역 배치도 켜기/끄기"
+          >
+            <Layers className="w-4 h-4" />
+          </button>
           <button
             onClick={handleLocateMe}
             disabled={isLocating}
@@ -383,9 +486,62 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
         )}
       </div>
 
-      {/* 3. 하단 선택된 부스/시설 팝업 시트 */}
+      {/* 3-A. 구역 블록(테마존 구역 카드) 선택 시 바텀시트 */}
+      {selectedBlock && selectedZoneData && (
+        <div className="absolute bottom-3 left-3 right-3 z-20 bg-white/98 backdrop-blur-md rounded-2xl p-4 shadow-xl border border-orange-200 animate-in slide-in-from-bottom-3 duration-200 max-h-56 overflow-y-auto">
+          <div className="flex items-start justify-between border-b border-slate-100 pb-2">
+            <div>
+              <div className="flex items-center space-x-1.5">
+                <span
+                  className="w-2.5 h-2.5 rounded-full"
+                  style={{ backgroundColor: selectedBlock.color }}
+                />
+                <span className="text-xs font-bold text-slate-800">
+                  {selectedBlock.koreanName} ({selectedBlock.name})
+                </span>
+                <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                  {selectedBlock.boothRange}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-600 mt-0.5">{selectedBlock.description}</p>
+            </div>
+
+            <button
+              onClick={() => setSelectedBlock(null)}
+              className="p-1.5 bg-slate-100 hover:bg-slate-200 rounded-full text-slate-500 transition-colors flex-shrink-0"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* 주요 부스 및 7성사 부스 요약 */}
+          <div className="mt-2.5 space-y-1.5">
+            <span className="text-[10px] font-bold text-slate-500 block">
+              주요 거점 및 7성사 부스 (총 {selectedZoneData.booths.length}개):
+            </span>
+            <div className="flex flex-wrap gap-1 text-[10px]">
+              {selectedZoneData.booths
+                .filter((b) => b.isSacrament || b.number <= 3)
+                .map((b) => (
+                  <span
+                    key={b.number}
+                    className={`px-2 py-0.5 rounded-lg font-medium border ${
+                      b.isSacrament
+                        ? "bg-amber-50 text-amber-900 border-amber-300 font-bold"
+                        : "bg-slate-50 text-slate-700 border-slate-200"
+                    }`}
+                  >
+                    {b.number}번 {b.name} {b.isSacrament && "✝️"}
+                  </span>
+                ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3-B. 단일 부스/시설 핀 선택 시 팝업 시트 */}
       {selectedPoint && (
-        <div className="absolute bottom-3 left-3 right-3 z-10 bg-white/98 backdrop-blur-md rounded-2xl p-4 shadow-xl border border-orange-200 animate-in slide-in-from-bottom-3 duration-200">
+        <div className="absolute bottom-3 left-3 right-3 z-20 bg-white/98 backdrop-blur-md rounded-2xl p-4 shadow-xl border border-orange-200 animate-in slide-in-from-bottom-3 duration-200">
           <div className="flex items-start justify-between">
             <div className="space-y-1 flex-1 pr-2">
               <div className="flex items-center space-x-1.5 flex-wrap gap-y-1">
