@@ -21,15 +21,19 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://busan-youth-day.vercel.app";
+
 export const metadata: Metadata = {
-  title: "쭈양이 꾹",
-  description: "스포원파크 부스 QR 스캔하고 현장 굿즈 교환받자! 🍞🐟",
-  metadataBase: new URL("https://byd2026.catb.kr"),
+  title: "2026 부산교구 청소년의 날 공식 가이드 - 쭈양이 꾹",
+  description:
+    "2026 부산교구 청소년의 날(BYD) 공식 모바일 가이드 '쭈양이 꾹' - 스포원파크 4대 테마존 부스 QR 스탬프 투어 및 현장 편의 안내",
+  metadataBase: new URL(siteUrl),
 
   openGraph: {
-    title: "쭈양이 꾹 📱",
-    description: "스포원파크 부스 QR 스캔 ➔ 도장 꾹! ➔ 현장 굿즈 교환하기",
-    url: "https://byd2026.catb.kr",
+    title: "2026 부산교구 청소년의 날 공식 가이드 - 쭈양이 꾹",
+    description:
+      "스포원파크 4대 테마존 부스 QR 스탬프 투어 및 현장 편의 안내",
+    url: siteUrl,
     siteName: "쭈양이 꾹",
     locale: "ko_KR",
     type: "website",
@@ -44,12 +48,16 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "쭈양이 꾹 📱",
-    description: "스포원파크 부스 QR 스캔 ➔ 도장 꾹! ➔ 현장 굿즈 교환하기",
+    title: "2026 부산교구 청소년의 날 공식 가이드 - 쭈양이 꾹",
+    description:
+      "스포원파크 4대 테마존 부스 QR 스탬프 투어 및 현장 편의 안내",
     images: ["/assets/og_thumbnail/byd2026_og_thumbnail_pwa_v2.png"],
   },
   icons: {
-    icon: "/assets/favicon/jjuyang_ggook_favicon_symbol_v2.png",
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/assets/favicon/jjuyang_ggook_favicon_symbol_v2.png", type: "image/png" },
+    ],
     apple: "/assets/favicon/jjuyang_ggook_favicon_symbol_v2.png",
   },
   appleWebApp: {
@@ -58,6 +66,7 @@ export const metadata: Metadata = {
     title: "쭈양이 꾹",
   },
 };
+
 
 export default function RootLayout({
   children,
