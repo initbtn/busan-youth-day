@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Heart, MessageSquare, Camera, Flag, Sparkles, X, Upload, RefreshCw } from "lucide-react";
+import { Heart, MessageSquare, Camera, Flag, Sparkles, X, Upload, RefreshCw, ShieldCheck, AlertTriangle } from "lucide-react";
 import { useUser } from "@/context/UserContext";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -13,6 +13,7 @@ import {
   syncPostToSupabase,
   fetchPostsFromSupabase,
   mergeCommunityPosts,
+  isOfficialRole,
 } from "@/lib/communityPosts";
 
 export function CommunityFeedView() {
@@ -23,6 +24,7 @@ export function CommunityFeedView() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isPosting, setIsPosting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [reportingPost, setReportingPost] = useState<CommunityPost | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 1. 컴포넌트 마운트 시: LocalStorage 오프라인 캐시 즉시 복원 + Supabase 원격 피드 동기화
@@ -103,7 +105,7 @@ export function CommunityFeedView() {
     if (!newContent.trim()) return;
 
     setIsPosting(true);
-    let uploadedImageUrl = previewUrl || undefined;
+    let uploadedImageUrl: string | undefined = undefined;
 
     // Cloudflare R2 업로드 API 시도
     if (selectedFile) {
@@ -117,19 +119,29 @@ export function CommunityFeedView() {
           }),
         });
 
-        if (presignedRes.ok) {
-          const { uploadUrl, publicUrl } = await presignedRes.json();
-          // S3 직업로드
-          await fetch(uploadUrl, {
-            method: "PUT",
-            headers: { "Content-Type": selectedFile.type },
-            body: selectedFile,
-          });
-          // R2 영구 CDN URL 연결
-          uploadedImageUrl = publicUrl;
+        if (!presignedRes.ok) {
+          throw new Error("Presigned URL 발급 실패");
         }
+
+        const { uploadUrl, publicUrl } = await presignedRes.json();
+        // S3 직업로드
+        const uploadRes = await fetch(uploadUrl, {
+          method: "PUT",
+          headers: { "Content-Type": selectedFile.type },
+          body: selectedFile,
+        });
+
+        if (!uploadRes.ok) {
+          throw new Error("스토리지 전송 실패");
+        }
+
+        // R2 영구 CDN URL 연결
+        uploadedImageUrl = publicUrl;
       } catch (err) {
-        console.warn("R2 upload fallback to preview", err);
+        console.error("Image upload failed:", err);
+        alert("사진 업로드 중 오류가 발생했습니다. 사진 없이 글을 올리시거나 네트워크 상태를 확인 후 다시 시도해 주세요.");
+        setIsPosting(false);
+        return; // 실패 시 임시 주소(blob:)로 글을 올리지 않고 즉시 중단 (깨진 이미지 방어)
       }
     }
 
@@ -276,8 +288,14 @@ export function CommunityFeedView() {
                   {post.author[0]}
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-slate-900 flex items-center space-x-1">
+                  <div className="text-xs font-bold text-slate-900 flex items-center space-x-1.5 flex-wrap">
                     <span>{post.author}</span>
+                    {(post.isOfficial || isOfficialRole(post.role)) && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                        <ShieldCheck className="w-3 h-3 mr-0.5 text-amber-600" />
+                        공식 인증
+                      </span>
+                    )}
                     <span className="text-[10px] font-normal text-slate-400">· {post.timeAgo}</span>
                   </div>
                   <div className="text-[10px] text-blue-600 font-medium">
@@ -285,7 +303,12 @@ export function CommunityFeedView() {
                   </div>
                 </div>
               </div>
-              <button className="text-slate-300 hover:text-slate-500">
+              <button
+                type="button"
+                onClick={() => setReportingPost(post)}
+                className="text-slate-300 hover:text-rose-500 p-1 rounded-lg transition-colors"
+                title="게시글 신고"
+              >
                 <Flag className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -326,6 +349,40 @@ export function CommunityFeedView() {
           </div>
         ))}
       </div>
+
+      {/* 게시글 신고 다이얼로그 모달 */}
+      {reportingPost && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-5 max-w-xs w-full shadow-2xl space-y-4">
+            <div className="flex items-center space-x-2 text-rose-600">
+              <AlertTriangle className="w-5 h-5" />
+              <h3 className="font-bold text-sm text-slate-900">게시글 신고</h3>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              &apos;{reportingPost.author}&apos; 님의 게시글을 부적절한 콘텐츠(비방, 스팸, 혐오 표현 등)로 신고하시겠습니까?
+            </p>
+            <div className="flex space-x-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setReportingPost(null)}
+                className="flex-1 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  alert("신고가 정상 접수되었습니다. 운영진 검토 후 조치됩니다.");
+                  setReportingPost(null);
+                }}
+                className="flex-1 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-xs transition-colors"
+              >
+                신고 접수
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

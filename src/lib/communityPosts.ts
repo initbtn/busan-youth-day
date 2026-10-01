@@ -10,6 +10,12 @@ export interface CommunityPost {
   isLiked?: boolean;
   createdAt?: string;
   userId?: string;
+  isOfficial?: boolean;
+}
+
+export function isOfficialRole(role?: string): boolean {
+  if (!role) return false;
+  return ["사제", "수도자", "학사님", "신부님", "수녀님"].some((r) => role.includes(r));
 }
 
 export const COMMUNITY_POSTS_STORAGE_KEY = "byd2026_community_posts";
@@ -77,7 +83,16 @@ export function loadCachedPosts(): CommunityPost[] {
     const raw = globalThis.localStorage.getItem(COMMUNITY_POSTS_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    const list = Array.isArray(parsed) ? parsed : [];
+    // blob: URL은 일시적인 브라우저 메모리 주소이므로 복원 시 제거 (엑스박스 방어)
+    return list.map((post) => {
+      if (post.imageUrl && post.imageUrl.startsWith("blob:")) {
+        const cleaned = { ...post };
+        delete cleaned.imageUrl;
+        return cleaned;
+      }
+      return post;
+    });
   } catch (err) {
     console.warn("Failed to load cached posts from localStorage:", err);
     return [];
@@ -116,18 +131,23 @@ function generateUuid(): string {
 }
 
 export function createPostPayload(params: CreatePostParams): CommunityPost {
+  // blob: URL은 브라우저 탭 세션에만 유효한 임시 주소이므로 영구 저장 차단
+  const sanitizedImageUrl =
+    params.imageUrl && !params.imageUrl.startsWith("blob:") ? params.imageUrl : undefined;
+
   return {
     id: generateUuid(),
     author: params.author || "순례자",
     parish: params.parish || "부산",
     role: params.role || "청년",
     content: params.content,
-    imageUrl: params.imageUrl,
+    imageUrl: sanitizedImageUrl,
     likes: 1,
     timeAgo: "방금 전",
     isLiked: true,
     createdAt: new Date().toISOString(),
     userId: params.userId,
+    isOfficial: isOfficialRole(params.role),
   };
 }
 
