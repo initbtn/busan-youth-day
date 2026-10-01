@@ -1,0 +1,115 @@
+---
+- name: Vercel 환경변수 및 시크릿 멱등성 동기화
+  hosts: localhost
+  gather_facts: false
+  vars:
+    project_root: "{{ playbook_dir }}/../../../"
+    vercel_scope: "jsconn"
+    pass_token_path: "vercel.com/token-jsconn"
+    target_environments: "production,preview,development"
+
+  tasks:
+    - name: 1. Vercel 인증 토큰 조회 (pass store)
+      ansible.builtin.command: "pass show {{ pass_token_path }}"
+      register: pass_token_raw
+      changed_when: false
+      no_log: true
+      ignore_errors: true
+
+    - name: 1-1. Vercel 토큰 정제
+      ansible.builtin.set_fact:
+        vercel_token: "{{ pass_token_raw.stdout_lines[0] | trim }}"
+      when: pass_token_raw.rc == 0
+      no_log: true
+
+    - name: 1-2. Vercel 토큰 유효성 검증
+      ansible.builtin.fail:
+        msg: "Vercel 인증 토큰을 'pass show {{ pass_token_path }}'에서 찾을 수 없습니다. pass 워밍 상태를 확인하세요."
+      when: vercel_token is not defined or vercel_token | length == 0
+
+    - name: 2. 로컬 .env.local 파일 존재 확인
+      ansible.builtin.stat:
+        path: "{{ project_root }}/.env.local"
+      register: env_local_stat
+
+    - name: 2-1. .env.local 부재 시 중단
+      ansible.builtin.fail:
+        msg: "프로젝트 루트에 .env.local 파일이 없습니다. 시크릿 원천 파일을 확인하세요."
+      when: not env_local_stat.stat.exists
+
+    - name: 3. .env.local 에서 환경변수 파싱
+      ansible.builtin.command: "cat {{ project_root }}/.env.local"
+      register: env_content
+      changed_when: false
+      no_log: true
+
+    - name: 3-1. 환경변수 딕셔너리 생성
+      ansible.builtin.set_fact:
+        env_vars: >-
+          {{
+            env_vars | default({}) | combine({
+              item.split('=', 1)[0] | trim: item.split('=', 1)[1] | trim | regex_replace('^[\"\x27]|[\"\x27]$', '')
+            })
+          }}
+      loop: "{{ env_content.stdout_lines }}"
+      when:
+        - item | length > 0
+        - not item.startswith('#')
+        - "'=' in item"
+      no_log: true
+
+    - name: 4. 동기화 대상 8대 환경변수 매트릭스 정의
+      ansible.builtin.set_fact:
+        sync_specs:
+          - name: "NEXT_PUBLIC_SUPABASE_URL"
+            type: "config"
+          - name: "NEXT_PUBLIC_SUPABASE_ANON_KEY"
+            type: "config"
+          - name: "SUPABASE_SERVICE_ROLE_KEY"
+            type: "secret"
+          - name: "NEXT_PUBLIC_R2_PUBLIC_URL"
+            type: "config"
+          - name: "R2_ACCOUNT_ID"
+            type: "secret"
+          - name: "R2_ACCESS_KEY_ID"
+            type: "secret"
+          - name: "R2_SECRET_ACCESS_KEY"
+            type: "secret"
+          - name: "R2_BUCKET_NAME"
+            type: "secret"
+
+    - name: 5. Vercel 환경변수 일괄 멱등성 주입 (npx vercel env add)
+      ansible.builtin.command: >
+        npx vercel env add {{ item.name }} {{ target_environments }}
+        --value "{{ env_vars[item.name] }}"
+        --type {{ item.type }}
+        --force
+        --yes
+        --scope {{ vercel_scope }}
+        --token "{{ vercel_token }}"
+      args:
+        chdir: "{{ project_root }}"
+      loop: "{{ sync_specs }}"
+      when: item.name in env_vars
+      register: sync_results
+      changed_when: "'Created' in sync_results.stdout or 'Updated' in sync_results.stdout or sync_results.rc == 0"
+      no_log: true
+
+    - name: 6. Vercel 프로젝트 현재 환경변수 목록 확인
+      ansible.builtin.command: >
+        npx vercel env ls --scope {{ vercel_scope }} --token "{{ vercel_token }}"
+      args:
+        chdir: "{{ project_root }}"
+      register: vercel_env_ls
+      changed_when: false
+      no_log: true
+
+    - name: 7. 동기화 완료 요약 출력
+      ansible.builtin.debug:
+        msg:
+          - "============================================================"
+          - "✅ Vercel 환경변수 선언적 동기화 완료 (Scope: {{ vercel_scope }})"
+          - "------------------------------------------------------------"
+          - "동기화된 변수 건수: {{ sync_specs | length }} 건"
+          - "적용 대상 환경: {{ target_environments }}"
+          - "============================================================"
