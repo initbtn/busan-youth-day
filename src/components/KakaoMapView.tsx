@@ -9,6 +9,7 @@ import {
   FountainZoneBlock,
 } from "@/data/boothLocations";
 import { OFFICIAL_ZONES } from "@/data/officialBooths";
+import { BoothListModal } from "@/components/BoothListModal";
 import {
   Sparkles,
   Crosshair,
@@ -17,6 +18,7 @@ import {
   X,
   Navigation,
   Layers,
+  ListFilter,
 } from "lucide-react";
 
 interface KakaoOverlayItem {
@@ -51,6 +53,8 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
   const [showZonePolygons, setShowZonePolygons] = useState(true);
   const [isLocating, setIsLocating] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [isBoothModalOpen, setIsBoothModalOpen] = useState(false);
+  const [boothModalInitialZone, setBoothModalInitialZone] = useState<"faith" | "hope" | "love" | "sharing" | "all">("all");
 
   const apiKey = process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY;
 
@@ -435,8 +439,18 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
           </button>
         </div>
 
-        {/* 컨트롤 그룹 (구역 블록 토글, 내 위치, 중심 리셋) */}
+        {/* 컨트롤 그룹 (전체 부스 목록 모달, 구역 블록 토글, 내 위치, 중심 리셋) */}
         <div className="flex items-center space-x-1 pointer-events-auto">
+          <button
+            onClick={() => {
+              setBoothModalInitialZone("all");
+              setIsBoothModalOpen(true);
+            }}
+            className="p-2.5 bg-white/95 backdrop-blur-md rounded-2xl shadow-md border border-slate-200/80 text-slate-700 hover:bg-slate-50 transition-colors"
+            title="81개 전체 부스 목록 열기"
+          >
+            <ListFilter className="w-4 h-4 text-orange-600" />
+          </button>
           <button
             onClick={() => setShowZonePolygons((prev) => !prev)}
             className={`p-2.5 rounded-2xl shadow-md border border-slate-200/80 transition-colors ${
@@ -561,9 +575,20 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
 
           {/* 주요 부스 및 7성사 부스 요약 */}
           <div className="mt-2.5 space-y-1.5">
-            <span className="text-[10px] font-bold text-slate-500 block">
-              주요 거점 및 7성사 부스 (총 {selectedZoneData.booths.length}개):
-            </span>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-slate-500">
+                주요 거점 및 7성사 부스 (총 {selectedZoneData.booths.length}개):
+              </span>
+              <button
+                onClick={() => {
+                  setBoothModalInitialZone(selectedBlock.zoneId);
+                  setIsBoothModalOpen(true);
+                }}
+                className="text-[10px] font-bold text-orange-600 hover:text-orange-700 underline flex items-center space-x-0.5"
+              >
+                <span>전체 부스 목록 보기 ({selectedZoneData.booths.length}개)</span>
+              </button>
+            </div>
             <div className="flex flex-wrap gap-1 text-[10px]">
               {selectedZoneData.booths
                 .filter((b) => b.isSacrament || b.number <= 3)
@@ -637,6 +662,33 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
           </div>
         </div>
       )}
+
+      {/* 4. 81개 전체 부스 목록 모달 */}
+      <BoothListModal
+        isOpen={isBoothModalOpen}
+        onClose={() => setIsBoothModalOpen(false)}
+        initialZoneId={boothModalInitialZone}
+        onSelectBooth={(booth) => {
+          // 해당 존의 중심 좌표 또는 매칭 포인트 탐색 (SPOWON_MAP_POINTS)
+          const zonePoint = SPOWON_MAP_POINTS.find(
+            (p) => p.category === "zone" && p.zoneId === booth.zoneId
+          );
+          const point: MapPoint = {
+            id: `booth-${booth.zoneId}-${booth.boothNumber}`,
+            name: booth.name || "부스",
+            category: booth.isSacrament ? "sacrament" : "zone",
+            zoneId: booth.zoneId,
+            zoneName: booth.zoneName,
+            lat: zonePoint ? zonePoint.lat : SPOWON_CENTER.lat,
+            lng: zonePoint ? zonePoint.lng : SPOWON_CENTER.lng,
+            description: `${booth.zoneName} ${booth.boothNumber}번 부스`,
+            boothNumber: booth.boothNumber,
+            isSacrament: booth.isSacrament,
+            sacramentType: booth.sacramentType,
+          };
+          handleSelectPoint(point);
+        }}
+      />
     </div>
   );
 }
