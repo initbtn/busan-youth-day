@@ -1,52 +1,19 @@
 "use client";
 
-import React, { useState, useRef } from "react";
-import { Heart, MessageSquare, Camera, Flag, Sparkles, X, Upload } from "lucide-react";
+import React, { useState, useRef, useEffect } from "react";
+import { Heart, MessageSquare, Camera, Flag, Sparkles, X, Upload, RefreshCw } from "lucide-react";
 import { useUser } from "@/context/UserContext";
-
-interface CommunityPost {
-  id: string;
-  author: string;
-  parish: string;
-  role: string;
-  content: string;
-  imageUrl?: string;
-  likes: number;
-  timeAgo: string;
-  isLiked?: boolean;
-}
-
-const INITIAL_POSTS: CommunityPost[] = [
-  {
-    id: "p-1",
-    author: "김마리아",
-    parish: "하단",
-    role: "청년",
-    content: "오늘 청년의 날 축제 너무 감동적입니다! 지성소 성체조배에서 큰 은혜 받고 가요 🕊️ #2026BYD #청년축제",
-    imageUrl: "/assets/yd2027_official_prayer_image.webp",
-    likes: 24,
-    timeAgo: "10분 전",
-  },
-  {
-    id: "p-2",
-    author: "박요셉",
-    parish: "남천",
-    role: "교리교사",
-    content: "우리 남천지구 친구들과 4대 테마존 스탬프 9개 완료했습니다! 쭈양이 굿즈 수령하러 갑니다 ㅎㅎ 🐑",
-    imageUrl: "/assets/byd2026_combined_final_vibe_mockup.webp",
-    likes: 18,
-    timeAgo: "25분 전",
-  },
-  {
-    id: "p-3",
-    author: "이베드로",
-    parish: "복산",
-    role: "청년",
-    content: "스포원파크 날씨 최고입니다! 신부님, 수녀님들과 함께 찬양 부르는 중입니다.",
-    likes: 31,
-    timeAgo: "1시간 전",
-  },
-];
+import { createClient } from "@/lib/supabase/client";
+import {
+  CommunityPost,
+  INITIAL_POSTS,
+  loadCachedPosts,
+  cachePosts,
+  createPostPayload,
+  syncPostToSupabase,
+  fetchPostsFromSupabase,
+  mergeCommunityPosts,
+} from "@/lib/communityPosts";
 
 export function CommunityFeedView() {
   const { user } = useUser();
@@ -55,11 +22,54 @@ export function CommunityFeedView() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isPosting, setIsPosting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // 1. 컴포넌트 마운트 시: LocalStorage 오프라인 캐시 즉시 복원 + Supabase 원격 피드 동기화
+  useEffect(() => {
+    const cached = loadCachedPosts();
+    if (cached.length > 0) {
+      setPosts(mergeCommunityPosts([], cached, INITIAL_POSTS));
+    }
+
+    const syncWithSupabase = async () => {
+      try {
+        const supabase = createClient();
+        const remote = await fetchPostsFromSupabase(supabase);
+        if (remote.length > 0) {
+          setPosts((current) => {
+            const merged = mergeCommunityPosts(remote, current, INITIAL_POSTS);
+            cachePosts(merged);
+            return merged;
+          });
+        }
+      } catch (err) {
+        console.warn("Supabase initial sync skipped (using cached/fallback):", err);
+      }
+    };
+
+    syncWithSupabase();
+  }, []);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      const supabase = createClient();
+      const remote = await fetchPostsFromSupabase(supabase);
+      const cached = loadCachedPosts();
+      const merged = mergeCommunityPosts(remote, cached, INITIAL_POSTS);
+      setPosts(merged);
+      cachePosts(merged);
+    } catch (err) {
+      console.warn("Manual refresh failed:", err);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   const handleLike = (id: string) => {
-    setPosts((prev) =>
-      prev.map((post) =>
+    setPosts((prev) => {
+      const updated = prev.map((post) =>
         post.id === id
           ? {
               ...post,
@@ -67,8 +77,10 @@ export function CommunityFeedView() {
               isLiked: !post.isLiked,
             }
           : post
-      )
-    );
+      );
+      cachePosts(updated);
+      return updated;
+    });
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -93,7 +105,7 @@ export function CommunityFeedView() {
     setIsPosting(true);
     let uploadedImageUrl = previewUrl || undefined;
 
-    // R2 업로드 API 시도
+    // Cloudflare R2 업로드 API 시도
     if (selectedFile) {
       try {
         const presignedRes = await fetch("/api/upload", {
@@ -113,6 +125,7 @@ export function CommunityFeedView() {
             headers: { "Content-Type": selectedFile.type },
             body: selectedFile,
           });
+          // R2 영구 CDN URL 연결
           uploadedImageUrl = publicUrl;
         }
       } catch (err) {
@@ -120,23 +133,33 @@ export function CommunityFeedView() {
       }
     }
 
-    const newPost: CommunityPost = {
-      id: "post-" + Date.now(),
+    // 새 게시글 객체 생성 (UUID, 시간, 유저 메타데이터 포함)
+    const newPost = createPostPayload({
       author: user?.name || "익명의 순례자",
       parish: user?.parish || "하단",
       role: user?.role || "청년",
       content: newContent,
       imageUrl: uploadedImageUrl,
-      likes: 1,
-      timeAgo: "방금 전",
-      isLiked: true,
-    };
+      userId: user?.id,
+    });
 
-    setPosts([newPost, ...posts]);
+    // 낙관적 UI 업데이트 및 LocalStorage 영구 보존
+    const nextPosts = [newPost, ...posts];
+    setPosts(nextPosts);
+    cachePosts(nextPosts);
+
     setNewContent("");
     setSelectedFile(null);
     setPreviewUrl(null);
     setIsPosting(false);
+
+    // Supabase posts 테이블에 비동기 영구 저장 (백그라운드 동기화)
+    try {
+      const supabase = createClient();
+      await syncPostToSupabase(supabase, newPost);
+    } catch (err) {
+      console.warn("Background Supabase sync deferred:", err);
+    }
   };
 
   return (
@@ -156,7 +179,18 @@ export function CommunityFeedView() {
               순례 여정의 순간을 인스타그램 스타일 피드로 함께 나눠요.
             </p>
           </div>
-          <div className="text-3xl">📸</div>
+          <div className="flex items-center space-x-2">
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="p-2 bg-white/10 hover:bg-white/20 active:scale-95 rounded-2xl transition-all text-white/90 hover:text-white"
+              title="피드 새로고침"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
+            </button>
+            <div className="text-3xl">📸</div>
+          </div>
         </div>
       </div>
 

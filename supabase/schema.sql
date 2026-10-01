@@ -71,9 +71,13 @@ ON public.stamps FOR INSERT WITH CHECK (auth.uid() = user_id);
 -- 4. Posts 테이블 (청년 소통 피드 및 방명록)
 CREATE TABLE IF NOT EXISTS public.posts (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  user_id UUID,
+  author TEXT DEFAULT '순례자',
+  parish TEXT DEFAULT '부산',
+  role TEXT DEFAULT '청년',
   content TEXT NOT NULL,
   image_url TEXT,
+  likes INTEGER DEFAULT 0,
   is_approved BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -81,13 +85,15 @@ CREATE TABLE IF NOT EXISTS public.posts (
 ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Approved posts are viewable by everyone" 
-ON public.posts FOR SELECT USING (is_approved = true);
+ON public.posts FOR SELECT USING (is_approved = true OR is_approved IS NULL);
 
-CREATE POLICY "Authenticated users can create posts" 
-ON public.posts FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Anyone can create posts" 
+ON public.posts FOR INSERT WITH CHECK (true);
 
 CREATE POLICY "Users can delete their own posts" 
 ON public.posts FOR DELETE USING (auth.uid() = user_id);
+
+GRANT ALL ON public.posts TO anon, authenticated, service_role;
 
 -- 5. Reward Entries 테이블 (경품 응모)
 CREATE TABLE IF NOT EXISTS public.reward_entries (
