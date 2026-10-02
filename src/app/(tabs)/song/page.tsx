@@ -8,7 +8,7 @@ import themeSongData from "../../../../public/assets/theme-song-gods-kingdom.jso
 
 export default function SongPage() {
   const [zoomLevel, setZoomLevel] = useState<number>(1);
-  const [activeTab, setActiveTab] = useState<"sheet" | "lyrics">("sheet");
+  const [activeTab, setActiveTab] = useState<"sheet" | "video">("sheet");
 
   const handleZoomIn = () => setZoomLevel((prev) => Math.min(prev + 0.3, 2.5));
   const handleZoomOut = () => setZoomLevel((prev) => Math.max(prev - 0.3, 0.8));
@@ -18,7 +18,7 @@ export default function SongPage() {
       try {
         await navigator.share({
           title: "청·청해 주제가: 하느님 나라에",
-          text: "부산교구 청소년의 날 공식 주제가 '하느님 나라에' 악보 및 가사입니다.",
+          text: "부산교구 청소년의 날 주제가 '하느님 나라에' 악보 및 율동영상입니다.",
           url: window.location.href,
         });
       } catch (err) {
@@ -72,17 +72,17 @@ export default function SongPage() {
               : "bg-slate-50 text-slate-500 hover:text-slate-700"
           }`}
         >
-          공식 전면 악보
+          전면 악보
         </button>
         <button
-          onClick={() => setActiveTab("lyrics")}
+          onClick={() => setActiveTab("video")}
           className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
-            activeTab === "lyrics"
+            activeTab === "video"
               ? "bg-amber-500 text-white shadow-sm"
               : "bg-slate-50 text-slate-500 hover:text-slate-700"
           }`}
         >
-          가사 전문 보기
+          율동영상
         </button>
       </div>
 
@@ -122,7 +122,7 @@ export default function SongPage() {
               style={{ transform: `scale(${zoomLevel})` }}
             >
               <Image
-                src="/assets/spiritual/theme_song_sheet_gods_kingdom.png"
+                src="/assets/theme_song_sheet_music.webp"
                 alt="하느님 나라에 악보"
                 width={400}
                 height={560}
@@ -134,15 +134,30 @@ export default function SongPage() {
         </div>
       )}
 
-      {/* 가사 탭 */}
-      {activeTab === "lyrics" && (
+      {/* 율동영상 탭 */}
+      {activeTab === "video" && (
         <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm space-y-4 text-xs leading-relaxed text-slate-700">
           <div className="flex items-center justify-between pb-2 border-b border-slate-100">
             <div>
-              <h3 className="text-sm font-black text-slate-900">{themeSongData.title}</h3>
-              <p className="text-[11px] text-slate-500">{themeSongData.subtitle}</p>
+              <h3 className="text-sm font-black text-slate-900">주제가 율동 및 찬양 영상</h3>
+              <p className="text-[11px] text-slate-500">2026 청소년·청년의 날 율동을 함께 배워보세요</p>
             </div>
             <Music className="w-5 h-5 text-amber-500" />
+          </div>
+
+          {/* YouTube iframe 반응형 미디어 소스 */}
+          <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-lg border border-slate-200 bg-black">
+            <iframe
+              className="w-full h-full"
+              width="560"
+              height="315"
+              src="https://www.youtube.com/embed/Jvcya-Qw77s?si=1YzDpgXzhwEJagE9"
+              title="YouTube video player"
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allowFullScreen
+            />
           </div>
 
           <div className="flex items-center space-x-2 text-[11px] text-slate-500 bg-slate-50 p-2.5 rounded-xl">

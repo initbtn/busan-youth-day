@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { X, BookOpen, Music } from "lucide-react";
 import prayerData from "../../public/assets/yd2027-official-prayer.json";
@@ -14,11 +14,21 @@ interface SpiritualModalProps {
 export function SpiritualModal({ type, onClose }: SpiritualModalProps) {
   const [activeTab, setActiveTab] = useState<"text" | "sheet">("text");
 
+  useEffect(() => {
+    if (type) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = prev;
+      };
+    }
+  }, [type]);
+
   if (!type) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-3xl max-w-lg w-full max-h-[85vh] flex flex-col shadow-2xl relative overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-white rounded-3xl max-w-lg w-full max-h-[85vh] flex flex-col shadow-2xl relative overflow-hidden animate-in fade-in zoom-in-95 duration-200 overscroll-contain">
         {/* 헤더 */}
         <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50/50">
           <div className="flex items-center space-x-2">
@@ -103,7 +113,7 @@ export function SpiritualModal({ type, onClose }: SpiritualModalProps) {
                     : "border-transparent text-slate-500 hover:text-slate-800"
                 }`}
               >
-                공식 악보 보기
+                악보 보기
               </button>
             </div>
 

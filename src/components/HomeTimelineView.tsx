@@ -43,7 +43,7 @@ export function HomeTimelineView() {
       <div className="relative w-full aspect-[1920/577] rounded-3xl overflow-hidden shadow-sm border border-orange-100 bg-orange-50">
         <Image
           src="/assets/banners/byd-hero-banner.webp"
-          alt="2026 부산교구 청년의 날 공식 배너"
+          alt="2026 부산교구 청년의 날 배너"
           fill
           priority
           sizes="(max-width: 768px) 100vw, 672px"
@@ -216,7 +216,7 @@ export function HomeTimelineView() {
           >
             <span className="text-xl mb-3">📜</span>
             <div>
-              <h4 className="text-xs font-bold leading-tight">WYD 공식 기도</h4>
+              <h4 className="text-xs font-bold leading-tight">WYD 기도문</h4>
               <p className="text-[9px] text-blue-100/90 mt-0.5">상본 앞/뒤</p>
             </div>
           </Link>
@@ -239,7 +239,7 @@ export function HomeTimelineView() {
             <span className="text-xl mb-3">🎵</span>
             <div>
               <h4 className="text-xs font-bold leading-tight">하느님 나라에</h4>
-              <p className="text-[9px] text-amber-100/90 mt-0.5">공식 악보</p>
+              <p className="text-[9px] text-amber-100/90 mt-0.5">악보·율동</p>
             </div>
           </Link>
         </div>

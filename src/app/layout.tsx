@@ -24,13 +24,13 @@ export const viewport: Viewport = {
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://busan-youth-day.vercel.app";
 
 export const metadata: Metadata = {
-  title: "2026 부산교구 청소년의 날 공식 가이드 - 쭈양이 꾹",
+  title: "2026 부산교구 청소년의 날 디지털 가이드 - 쭈양이 꾹",
   description:
-    "2026 부산교구 청소년의 날(BYD) 공식 모바일 가이드 '쭈양이 꾹' - 스포원파크 4대 테마존 부스 QR 스탬프 투어 및 현장 편의 안내",
+    "2026 부산교구 청소년의 날(BYD) 모바일 가이드 '쭈양이 꾹' - 스포원파크 4대 테마존 부스 QR 스탬프 투어 및 현장 편의 안내",
   metadataBase: new URL(siteUrl),
 
   openGraph: {
-    title: "2026 부산교구 청소년의 날 공식 가이드 - 쭈양이 꾹",
+    title: "2026 부산교구 청소년의 날 디지털 가이드 - 쭈양이 꾹",
     description:
       "스포원파크 4대 테마존 부스 QR 스탬프 투어 및 현장 편의 안내",
     url: siteUrl,
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "2026 부산교구 청소년의 날 공식 가이드 - 쭈양이 꾹",
+    title: "2026 부산교구 청소년의 날 디지털 가이드 - 쭈양이 꾹",
     description:
       "스포원파크 4대 테마존 부스 QR 스탬프 투어 및 현장 편의 안내",
     images: ["/assets/og_thumbnail/byd2026_og_thumbnail_pwa_v2.png"],

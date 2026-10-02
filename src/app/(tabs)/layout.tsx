@@ -44,7 +44,7 @@ function TabsLayoutContent({
       {/* 최상단 주황색 띠 공지 배너 */}
       <div className="bg-orange-500 text-white px-4 py-2 text-xs font-semibold flex items-center justify-between shadow-sm">
         <div className="flex items-center space-x-1.5 truncate">
-          <span className="bg-white/20 px-1.5 py-0.5 rounded text-[10px] font-bold">공식</span>
+          <span className="bg-white/20 px-1.5 py-0.5 rounded text-[10px] font-bold">안내</span>
           <span className="truncate">스포원파크 부스 QR 스캔하고 현장 굿즈 교환받자! 🍞🐟</span>
         </div>
         <div className="flex items-center space-x-1 flex-shrink-0 ml-2">
@@ -81,7 +81,7 @@ function TabsLayoutContent({
               <span>쭈양이 꾹</span>
               <span className="text-[10px] font-bold text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded">2026 BYD</span>
             </h1>
-            <p className="text-[10px] text-slate-500 font-semibold">스포원파크 디지털 순례 가이드</p>
+            <p className="text-[10px] text-slate-500 font-semibold">부산교구 청년의날 디지털 순례 가이드</p>
           </div>
         </div>
 
