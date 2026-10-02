@@ -146,7 +146,7 @@ export function OnboardingModal({ isOpen, onClose }: OnboardingModalProps) {
             <span className="text-[11px] font-bold px-2.5 py-0.5 bg-orange-100 text-orange-700 rounded-full">
               Step {step} of 4
             </span>
-            <span className="text-xs font-semibold text-slate-500">순례 등록</span>
+            <span className="text-xs font-semibold text-slate-500">참가자 등록</span>
           </div>
           <div className="w-20 bg-slate-100 h-1.5 rounded-full overflow-hidden">
             <div
@@ -387,11 +387,11 @@ export function OnboardingModal({ isOpen, onClose }: OnboardingModalProps) {
                 className="w-2/3 py-3 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold rounded-xl text-xs transition-all shadow-md flex items-center justify-center space-x-1"
               >
                 {isAllocating ? (
-                  <span>성인 순례단 무작위 배정 중...</span>
+                  <span>청년의 날 모둠 배정 중...</span>
                 ) : (
                   <>
                     <Sparkles className="w-4 h-4 text-amber-200" />
-                    <span>순례 그룹 배정 및 시작</span>
+                    <span>청년의 날 모둠 배정 및 시작</span>
                   </>
                 )}
               </button>
@@ -399,7 +399,7 @@ export function OnboardingModal({ isOpen, onClose }: OnboardingModalProps) {
           </div>
         )}
 
-        {/* 4단계: 성인 이름 기반 순례 그룹 배정 완료 축하 모달 (PRD §2.3) */}
+        {/* 4단계: 성인 이름 기반 청년의 날 모둠 배정 완료 축하 모달 (PRD §2.3) */}
         {step === 4 && (
           <div className="mt-4 text-center space-y-4">
             <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
@@ -407,17 +407,17 @@ export function OnboardingModal({ isOpen, onClose }: OnboardingModalProps) {
             </div>
 
             <div>
-              <h2 className="text-xl font-black text-slate-900">순례 등록 완료!</h2>
+              <h2 className="text-xl font-black text-slate-900">참가자 등록 완료!</h2>
               <p className="text-xs text-slate-600 mt-1">
                 <span className="font-bold text-orange-600">{selectedParish}성당</span>{" "}
-                <span className="font-bold text-slate-900">{name || "순례자"}</span>님
+                <span className="font-bold text-slate-900">{name || "참가 청년"}</span>님
               </p>
             </div>
 
             <div className="p-4 bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 border border-orange-200 rounded-2xl shadow-inner text-left">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-bold text-orange-700 uppercase tracking-wider bg-orange-100 px-2 py-0.5 rounded-full">
-                  무작위 배정 순례 공동체
+                  배정된 청년의 날 모둠
                 </span>
                 <span className="text-[10px] text-slate-500 font-medium">
                   {allocatedSaint?.feastDay || "축일"}
@@ -445,7 +445,7 @@ export function OnboardingModal({ isOpen, onClose }: OnboardingModalProps) {
               onClick={onClose}
               className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl text-xs transition-colors shadow-md"
             >
-              순례 여정 시작하기
+              축제 여정 시작하기
             </button>
           </div>
         )}

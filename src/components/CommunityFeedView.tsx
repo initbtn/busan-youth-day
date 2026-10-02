@@ -43,8 +43,11 @@ import { optimizeImage, isSupportedMediaType, isVideoFile } from "@/lib/imageOpt
 import { isVideoUrl, compressVideoIfNeeded } from "@/lib/videoCompressor";
 import { MediaSliderViewer } from "@/components/MediaSliderViewer";
 import { signInWithKakao } from "@/lib/auth/kakao";
+import { useSearchParams } from "next/navigation";
 
 export function CommunityFeedView() {
+  const searchParams = useSearchParams();
+  const targetPostId = searchParams.get("postId");
   const { user } = useUser();
   const isKakaoSignedIn = !!(user && (user.email || user.provider === "kakao"));
   const [posts, setPosts] = useState<CommunityPost[]>(INITIAL_POSTS);
@@ -99,6 +102,19 @@ export function CommunityFeedView() {
 
     syncWithSupabase();
   }, []);
+
+  // 딥링크 postId 파라미터 처리: 해당 게시글로 스크롤 및 댓글 열기
+  useEffect(() => {
+    if (targetPostId) {
+      setActiveCommentPostId(targetPostId);
+      setTimeout(() => {
+        const el = document.getElementById(`post-${targetPostId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 300);
+    }
+  }, [targetPostId]);
 
   // 모달 오픈 시 배경 스크롤 락 (DoD 5)
   useEffect(() => {
@@ -461,15 +477,24 @@ export function CommunityFeedView() {
 
       {/* 피드 목록 (인스타그램 카드 스타일) */}
       <div className="space-y-5">
-        {sortCommunityPosts(posts, sortOrder).map((post) => {
-          const mediaList = getPostMediaUrls(post);
-          const postComments = commentsMap[post.id] || [];
-          const isCommentsOpen = activeCommentPostId === post.id;
-          const currentCommentText = commentInputTexts[post.id] || "";
+        {posts.length === 0 ? (
+          <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm text-center space-y-2">
+            <p className="font-bold text-slate-700">등록된 소통피드 게시물이 없습니다.</p>
+            <p className="text-[11px] text-slate-400">
+              상단의 &apos;+ 새 게시물 작성&apos; 버튼을 눌러 첫 번째 축제 소식을 전해보세요!
+            </p>
+          </div>
+        ) : (
+          sortCommunityPosts(posts, sortOrder).map((post) => {
+            const mediaList = getPostMediaUrls(post);
+            const postComments = commentsMap[post.id] || [];
+            const isCommentsOpen = activeCommentPostId === post.id;
+            const currentCommentText = commentInputTexts[post.id] || "";
 
           return (
             <article
               key={post.id}
+              id={`post-${post.id}`}
               className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden transition-shadow hover:shadow-md"
             >
               {/* 1. 인스타그램 프로필 헤더 */}
@@ -645,7 +670,7 @@ export function CommunityFeedView() {
               </div>
             </article>
           );
-        })}
+        }))}
       </div>
 
       {/* 새 게시글 작성 모달 다이얼로그 (DoD 4 & DoD 5) */}

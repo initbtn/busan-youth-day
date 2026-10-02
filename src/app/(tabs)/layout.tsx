@@ -87,21 +87,21 @@ function TabsLayoutContent({
 
         {/* 사용자 정보 또는 온보딩 열기 버튼 */}
         {user ? (
-          <button
-            onClick={() => setIsOnboardingOpen(true)}
+          <Link
+            href="/profile"
             className="flex items-center space-x-1.5 px-3 py-1.5 bg-orange-50 text-orange-700 rounded-full text-xs font-semibold hover:bg-orange-100 transition-colors border border-orange-100"
           >
             <span>{user.name}</span>
             <span className="text-[10px] bg-orange-600 text-white px-1.5 py-0.5 rounded-full font-bold max-w-[120px] truncate">
               {user.saintGroup || (user.groupNumber ? `${user.groupNumber}조` : user.parish)}
             </span>
-          </button>
+          </Link>
         ) : (
           <button
             onClick={() => setIsOnboardingOpen(true)}
             className="px-3.5 py-1.5 bg-orange-500 text-white rounded-full text-xs font-bold shadow-md hover:bg-orange-600 transition-colors"
           >
-            순례 등록하기
+            참가자 등록하기
           </button>
         )}
       </header>

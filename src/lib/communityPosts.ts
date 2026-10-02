@@ -47,40 +47,7 @@ export function sortCommunityPosts(posts: CommunityPost[], sortOrder: FeedSortOr
 
 export const COMMUNITY_POSTS_STORAGE_KEY = "byd2026_community_posts";
 
-export const INITIAL_POSTS: CommunityPost[] = [
-  {
-    id: "p-1",
-    author: "김마리아",
-    parish: "하단",
-    role: "청년",
-    content: "오늘 청년의 날 축제 너무 감동적입니다! 지성소 성체조배에서 큰 은혜 받고 가요 🕊️ #2026BYD #청년축제",
-    imageUrl: "/assets/yd2027_official_prayer_image.webp",
-    likes: 24,
-    timeAgo: "10분 전",
-    createdAt: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "p-2",
-    author: "박요셉",
-    parish: "남천",
-    role: "교리교사",
-    content: "우리 남천지구 친구들과 4대 테마존 스탬프 9개 완료했습니다! 쭈양이 굿즈 수령하러 갑니다 ㅎㅎ 🐑",
-    imageUrl: "/assets/byd2026_combined_final_vibe_mockup.webp",
-    likes: 18,
-    timeAgo: "25분 전",
-    createdAt: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "p-3",
-    author: "이베드로",
-    parish: "복산",
-    role: "청년",
-    content: "스포원파크 날씨 최고입니다! 신부님, 수녀님들과 함께 찬양 부르는 중입니다.",
-    likes: 31,
-    timeAgo: "1시간 전",
-    createdAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
-  },
-];
+export const INITIAL_POSTS: CommunityPost[] = [];
 
 export function formatTimeAgo(dateString?: string): string {
   if (!dateString) return "방금 전";
@@ -403,3 +370,90 @@ export function cacheComments(comments: Record<string, PostComment[]>): void {
     console.warn("Failed to cache comments:", err);
   }
 }
+
+/**
+ * 특정 작성자명 또는 사용자 ID에 해당하는 내 게시글 목록 조회
+ */
+export function getPostsByAuthorOrUser(
+  posts: CommunityPost[],
+  userId?: string,
+  authorName?: string
+): CommunityPost[] {
+  return posts.filter((p) => {
+    if (userId && p.userId && p.userId === userId) {
+      return true;
+    }
+    if (authorName && p.author === authorName) {
+      return true;
+    }
+    return false;
+  });
+}
+
+/**
+ * 게시글 본문 및 미디어 수정
+ */
+export function updateCommunityPost(
+  posts: CommunityPost[],
+  postId: string,
+  changes: Partial<Pick<CommunityPost, "content" | "imageUrl" | "mediaUrls">>
+): CommunityPost[] {
+  return posts.map((p) => {
+    if (p.id !== postId) return p;
+    const updatedMediaUrls = changes.mediaUrls !== undefined ? changes.mediaUrls : p.mediaUrls;
+    const updatedImageUrl =
+      changes.imageUrl !== undefined
+        ? changes.imageUrl
+        : updatedMediaUrls && updatedMediaUrls.length > 0
+          ? updatedMediaUrls[0]
+          : p.imageUrl;
+
+    return {
+      ...p,
+      ...changes,
+      imageUrl: updatedImageUrl,
+      mediaUrls: updatedMediaUrls,
+    };
+  });
+}
+
+/**
+ * 게시글 삭제
+ */
+export function deleteCommunityPost(
+  posts: CommunityPost[],
+  postId: string
+): CommunityPost[] {
+  return posts.filter((p) => p.id !== postId);
+}
+
+/**
+ * 사용자가 작성한 댓글 목록 전체 조회 (게시글 ID 포함)
+ */
+export function getMyComments(
+  commentsMap: Record<string, PostComment[]>,
+  authorName: string
+): PostComment[] {
+  if (!commentsMap || !authorName) return [];
+  const results: PostComment[] = [];
+
+  Object.values(commentsMap).forEach((comments) => {
+    if (Array.isArray(comments)) {
+      comments.forEach((c) => {
+        if (c.author === authorName) {
+          results.push(c);
+        }
+      });
+    }
+  });
+
+  // 최신 작성순 정렬
+  results.sort((a, b) => {
+    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return timeB - timeA;
+  });
+
+  return results;
+}
+
