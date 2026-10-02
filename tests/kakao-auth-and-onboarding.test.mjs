@@ -56,6 +56,8 @@ test("카카오 SSO 간편 인증 및 온보딩 순례 그룹 무작위 배정 �
     assert.ok(kakaoAuthContent.includes("/api/auth/callback/kakao"), "콜백 경로가 /api/auth/callback/kakao 로 지정되어야 합니다.");
     // Major: pilgrim_saint_name 저장 검증
     assert.ok(kakaoAuthContent.includes("pilgrim_saint_name"), "Supabase Auth 메타데이터에 pilgrim_saint_name을 저장해야 합니다.");
+    // Issue #52: scopes 제거로 KOE205(invalid_scope) 방지 검증
+    assert.ok(!kakaoAuthContent.includes("scopes:"), "카카오 콘솔 미설정 동의항목 충돌(KOE205) 방지를 위해 scopes 파라미터가 없어야 합니다.");
   });
 
   await t.test("DoD 3: UserContext 및 OnboardingModal 메타데이터 저장 및 성인 순례 그룹 연동 검증", async () => {
