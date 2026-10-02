@@ -87,7 +87,7 @@ export function OnboardingModal({ isOpen, onClose }: OnboardingModalProps) {
 
     // 무작위 성인(Saint) 기반 순례 공동체 배정 (엔진 연동)
     setTimeout(async () => {
-      const allocation = assignPilgrimageGroup(user?.id || name || undefined, 20);
+      const allocation = assignPilgrimageGroup(user?.id || name || undefined);
       const saint = getPilgrimSaintById(allocation.saintId) || getRandomPilgrimSaint();
       setAllocatedSaint(saint);
       setAllocatedPilgrimageGroup(allocation.pilgrimageGroup);
@@ -424,11 +424,11 @@ export function OnboardingModal({ isOpen, onClose }: OnboardingModalProps) {
                 </span>
               </div>
               <p className="text-xl font-black text-orange-950 mt-1.5 tracking-tight">
-                {allocatedPilgrimageGroup || (allocatedSaint ? `${allocatedSaint.name} 1조` : "성 김대건 안드레아 1조")}
+                {allocatedPilgrimageGroup || (allocatedSaint ? allocatedSaint.groupName : "김대건 안드레아 모둠")}
               </p>
               <div className="flex items-center space-x-1.5 mt-1">
                 <span className="text-[10px] font-bold text-orange-700 bg-orange-100/90 px-1.5 py-0.5 rounded">
-                  {allocatedSaint?.groupName || "김대건 안드레아 그룹"}
+                  {allocatedSaint?.groupName || "김대건 안드레아 모둠"}
                 </span>
                 <span className="text-[11px] text-orange-800/90 font-medium">
                   {allocatedSaint?.title}

@@ -190,11 +190,11 @@ export function MyProfileView() {
               )}
             </div>
             <p className="text-[11px] text-white/90 font-medium truncate mt-0.5">
-              {user?.parish || "부산교구"} · {user?.role || "청년"}
+              부산교구 · {user?.district || "하단지구"} · {user?.parish ? `${user.parish}성당` : "성당 미지정"} · {user?.role || "청년"}
             </p>
             <div className="flex items-center space-x-1.5 mt-1.5">
               <span className="text-[10px] bg-white text-orange-700 px-2 py-0.5 rounded-full font-bold shadow-sm">
-                {currentSaint?.name || "2027 WYD 수호성인"} 모둠
+                {user?.saintGroup || (currentSaint ? currentSaint.groupName : "김대건 안드레아 모둠")}
               </span>
             </div>
           </div>
@@ -318,11 +318,19 @@ export function MyProfileView() {
               />
             </div>
 
-            {/* 본당 및 소속 역할 (안내) */}
+            {/* 지구/본당 및 소속 역할 (안내) */}
             <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 text-[11px] text-slate-600 space-y-1">
               <div className="flex justify-between">
+                <span className="font-semibold text-slate-500">소속 교구/지구:</span>
+                <span className="font-bold text-slate-800">부산교구 · {user?.district || "하단지구"}</span>
+              </div>
+              <div className="flex justify-between">
                 <span className="font-semibold text-slate-500">소속 본당:</span>
-                <span className="font-bold text-slate-800">{user?.parish || "미배정"}</span>
+                <span className="font-bold text-slate-800">{user?.parish ? `${user.parish}성당` : "미배정"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-semibold text-slate-500">청년의 날 모둠:</span>
+                <span className="font-bold text-orange-600">{user?.saintGroup || (currentSaint ? currentSaint.groupName : "김대건 안드레아 모둠")}</span>
               </div>
               <div className="flex justify-between">
                 <span className="font-semibold text-slate-500">소속 역할:</span>

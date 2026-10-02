@@ -20,17 +20,18 @@ function TabsLayoutContent({
 }: {
   children: React.ReactNode;
 }) {
-  const { user } = useUser();
+  const { user, isLoading } = useUser();
   const pathname = usePathname();
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
 
-  // 최초 방문 또는 온보딩 미완료(카카오 로그인 직후 등) 시 온보딩 모달 자동 오픈
+  // 최초 방문 또는 온보딩 미완료(카카오 로그인 직후 등) 시 온보딩 모달 자동 오픈 (세션 로딩 완료 후 판정)
   useEffect(() => {
+    if (isLoading) return;
     const isCompleted = user?.onboardingCompleted && user?.termsAgreed && !!user?.parish;
     if (!isCompleted) {
       setIsOnboardingOpen(true);
     }
-  }, [user]);
+  }, [user, isLoading]);
 
   // 활성 탭 판별
   const isHome = pathname === "/" || pathname === "";
@@ -93,7 +94,7 @@ function TabsLayoutContent({
           >
             <span>{user.name}</span>
             <span className="text-[10px] bg-orange-600 text-white px-1.5 py-0.5 rounded-full font-bold max-w-[120px] truncate">
-              {user.saintGroup || (user.groupNumber ? `${user.groupNumber}조` : user.parish)}
+              {user.saintGroup || `${user.parish}성당`}
             </span>
           </Link>
         ) : (

@@ -27,20 +27,21 @@ import {
 } from "lucide-react";
 
 export function MainAppContainer() {
-  const { user, isLeader, parishNotices, updateParishNotice } = useUser();
+  const { user, isLoading, isLeader, parishNotices, updateParishNotice } = useUser();
   const [activeTab, setActiveTab] = useState<"home" | "stamp" | "feed" | "info" | "seating">("home");
   const [spiritualViewer, setSpiritualViewer] = useState<"prayer" | "song" | "saints" | null>(null);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isMapGuideOpen, setIsMapGuideOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState<15 | 16 | 17>(15);
 
-  // 최초 방문 또는 온보딩 미완료 시 온보딩 모달 자동 오픈
+  // 최초 방문 또는 온보딩 미완료 시 온보딩 모달 자동 오픈 (세션 로딩 완료 후 판정)
   useEffect(() => {
+    if (isLoading) return;
     const isCompleted = user?.onboardingCompleted && user?.termsAgreed && !!user?.parish;
     if (!isCompleted) {
       setIsOnboardingOpen(true);
     }
-  }, [user]);
+  }, [user, isLoading]);
 
   // 본당 CMS 공지 작성 상태
   const userParish = user?.parish || "하단";
@@ -108,7 +109,7 @@ export function MainAppContainer() {
           >
             <span>{user.name}</span>
             <span className="text-[10px] bg-orange-600 text-white px-1.5 py-0.5 rounded-full font-bold max-w-[120px] truncate">
-              {user.saintGroup || (user.groupNumber ? `${user.groupNumber}조` : user.parish)}
+              {user.saintGroup || `${user.parish}성당`}
             </span>
           </button>
         ) : (

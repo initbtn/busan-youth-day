@@ -39,14 +39,12 @@ describe("카카오 SSO 간편 인증 및 온보딩 순례 공동체 배정 계�
     const saints = getAvailableSaints();
     assert.ok(saints.length >= 5, "성인 풀은 5명 이상의 수호성인을 포함해야 함");
 
-    // 2. 무작위 배정 결과 구조 검증
+    // 2. 무작위 배정 결과 구조 검증 (Issue #62: n조 제거 및 5개 수호성인 모둠 배정)
     const result = assignPilgrimageGroup();
     assert.ok(result.saintId, "배정된 성인 ID가 존재해야 함");
     assert.ok(result.saintName, "배정된 성인 이름이 존재해야 함");
-    assert.ok(typeof result.groupNumber === "number", "조 번호가 숫자여야 함");
-    assert.ok(result.groupNumber >= 1 && result.groupNumber <= 50, "조 번호는 1~50 범위여야 함");
-    assert.ok(result.pilgrimageGroup.includes(result.saintName), "순례단 명칭에 성인 이름이 포함되어야 함");
-    assert.ok(result.pilgrimageGroup.includes(`${result.groupNumber}조`), "순례단 명칭에 조 번호가 포함되어야 함");
+    assert.ok(result.pilgrimageGroup.endsWith("모둠"), "모둠 명칭은 '모둠'으로 끝나야 함");
+    assert.ok(!result.pilgrimageGroup.includes("조"), "순례단 명칭에 조 번호가 포함되지 않아야 함");
 
     // 3. 고정 시드(userId) 입력 시 멱등 배정 검증
     const fixedResult1 = assignPilgrimageGroup("user-uuid-12345");
