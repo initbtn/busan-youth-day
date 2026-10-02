@@ -11,11 +11,19 @@ import {
   Sparkles,
   Megaphone,
   Edit3,
+  LayoutGrid,
+  List,
 } from "lucide-react";
+import { ZoneScheduleGridView } from "@/components/ZoneScheduleGridView";
+import { HoliesScheduleModal } from "@/components/HoliesScheduleModal";
+import { MassGuideModal } from "@/components/MassGuideModal";
 
 export function HomeTimelineView() {
   const { user, isLeader, parishNotices, updateParishNotice } = useUser();
   const [selectedDay, setSelectedDay] = useState<15 | 16 | 17>(15);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [isHoliesModalOpen, setIsHoliesModalOpen] = useState(false);
+  const [isMassModalOpen, setIsMassModalOpen] = useState(false);
 
   // 본당 CMS 공지 작성 상태
   const userParish = user?.parish || "하단";
@@ -237,55 +245,101 @@ export function HomeTimelineView() {
         </div>
       </div>
 
-      {/* 실시간 타임라인 (기획서 Page 6) */}
+      {/* 실시간 타임라인 (기획서 Page 6 & PRD §3.2) */}
       <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm space-y-4">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div className="flex items-center space-x-2">
             <Calendar className="w-4 h-4 text-orange-500" />
             <h3 className="text-sm font-bold text-slate-900">본대회 타임라인</h3>
           </div>
-          <span className="text-[11px] text-slate-400 font-medium">스포원파크</span>
+          
+          {/* 그리드 / 리스트 뷰 토글 스위처 */}
+          <div className="flex items-center space-x-1 p-0.5 bg-slate-100 rounded-xl">
+            <button
+              onClick={() => setViewMode("grid")}
+              className={`flex items-center space-x-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                viewMode === "grid"
+                  ? "bg-white text-orange-600 shadow-xs"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
+              title="구역별 매트릭스 그리드 뷰"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>구역별 그리드</span>
+            </button>
+            <button
+              onClick={() => setViewMode("list")}
+              className={`flex items-center space-x-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                viewMode === "list"
+                  ? "bg-white text-orange-600 shadow-xs"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
+              title="순차 타임라인 리스트 뷰"
+            >
+              <List className="w-3.5 h-3.5" />
+              <span>리스트</span>
+            </button>
+          </div>
         </div>
 
-        <div className="space-y-4">
-          {EVENT_SCHEDULE.map((item, idx) => (
-            <div key={idx} className="flex space-x-3 text-xs relative">
-              <div className="w-18 flex-shrink-0 font-bold text-slate-600 pt-0.5">
-                {item.time.split(" ~ ")[0]}
-              </div>
-              <div className="flex-1 space-y-0.5 pb-3 border-b border-slate-50">
-                <div className="flex items-center space-x-1.5">
-                  <span
-                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                      item.zone === "A"
-                        ? "bg-blue-100 text-blue-700"
-                        : item.zone === "B"
-                        ? "bg-amber-100 text-amber-700"
-                        : item.zone === "C"
-                        ? "bg-emerald-100 text-emerald-700"
-                        : "bg-slate-100 text-slate-700"
-                    }`}
-                  >
-                    {item.zone}구역
-                  </span>
-                  <span
-                    className={`font-bold ${
-                      item.isImportant ? "text-orange-950 font-black" : "text-slate-800"
-                    }`}
-                  >
-                    {item.title}
-                  </span>
+        {viewMode === "grid" ? (
+          <ZoneScheduleGridView
+            onOpenHolies={() => setIsHoliesModalOpen(true)}
+            onOpenMassGuide={() => setIsMassModalOpen(true)}
+          />
+        ) : (
+          <div className="space-y-4">
+            {EVENT_SCHEDULE.map((item, idx) => (
+              <div key={idx} className="flex space-x-3 text-xs relative">
+                <div className="w-18 flex-shrink-0 font-bold text-slate-600 pt-0.5">
+                  {item.time.split(" ~ ")[0]}
                 </div>
-                <p className="text-[11px] text-slate-500">{item.description}</p>
-                <div className="text-[10px] text-slate-400 flex items-center space-x-1 pt-0.5">
-                  <MapPin className="w-3 h-3 text-slate-400" />
-                  <span>{item.location}</span>
+                <div className="flex-1 space-y-0.5 pb-3 border-b border-slate-50">
+                  <div className="flex items-center space-x-1.5">
+                    <span
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                        item.zone === "A"
+                          ? "bg-blue-100 text-blue-700"
+                          : item.zone === "B"
+                          ? "bg-amber-100 text-amber-700"
+                          : item.zone === "C"
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-slate-100 text-slate-700"
+                      }`}
+                    >
+                      {item.zone}구역
+                    </span>
+                    <span
+                      className={`font-bold ${
+                        item.isImportant ? "text-orange-950 font-black" : "text-slate-800"
+                      }`}
+                    >
+                      {item.title}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">{item.description}</p>
+                  <div className="text-[10px] text-slate-400 flex items-center space-x-1 pt-0.5">
+                    <MapPin className="w-3 h-3 text-slate-400" />
+                    <span>{item.location}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* 지성소 전용 일정 상세 모달 (PRD §3.3) */}
+      <HoliesScheduleModal
+        isOpen={isHoliesModalOpen}
+        onClose={() => setIsHoliesModalOpen(false)}
+      />
+
+      {/* 파견미사 참여 3대 가이드 모달 (PRD §3.4) */}
+      <MassGuideModal
+        isOpen={isMassModalOpen}
+        onClose={() => setIsMassModalOpen(false)}
+      />
     </div>
   );
 }
