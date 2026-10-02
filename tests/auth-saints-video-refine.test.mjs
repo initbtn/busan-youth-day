@@ -72,7 +72,7 @@ describe("인증 필수화, WYD 5인 성인 배정, 율동영상 및 명칭 정�
     assert.ok(saintsContent.includes("josephine-bakhita"), "성 요세피나 바키타 포함");
 
     // PILGRIM_SAINTS 배열에 정확히 5인만 배정되어 있는지 검증
-    const pilgrimMatch = saintsContent.match(/export const PILGRIM_SAINTS: readonly Saint\[\] = \[([\s\S]*?)\];/);
+    const pilgrimMatch = saintsContent.match(/export const PILGRIM_SAINTS:\s*(?:readonly\s+)?(?:Saint|PilgrimSaint)\[\]\s*=\s*\[([\s\S]*?)\];/);
     assert.ok(pilgrimMatch, "PILGRIM_SAINTS 배열 정의가 존재해야 함");
     const saintIds = [...pilgrimMatch[1].matchAll(/id:\s*"([^"]+)"/g)].map(m => m[1]);
     assert.strictEqual(saintIds.length, 5, "PILGRIM_SAINTS는 정확히 5인 수호성인이어야 함");
