@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { OFFICIAL_ZONES, OfficialBooth, ZoneData } from "@/data/officialBooths";
 import { MapPoint } from "@/data/boothLocations";
 import {
@@ -31,6 +32,7 @@ export function BoothListModal({
   initialZoneId = "all",
   onSelectBooth,
 }: BoothListModalProps) {
+  const router = useRouter();
   const [selectedZoneFilter, setSelectedZoneFilter] = useState<ZoneData["id"] | "all">(
     initialZoneId
   );
@@ -120,6 +122,7 @@ export function BoothListModal({
       });
     }
     onClose();
+    router.push(`/booth/${booth.zoneId}-${booth.number}`);
   };
 
   return (
