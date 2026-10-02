@@ -1,5 +1,5 @@
 // 스포원파크 (금정체육공원) 및 4대 테마존 부스/시설 좌표 정의
-// 기준 중심 좌표: 스포원파크 야외 분수광장 (35.28173, 129.09845)
+// 기준 중심 좌표: 스포원파크 야외 분수광장 / 수변공원 (35.291961, 129.105222)
 
 import { OFFICIAL_ZONES } from "./officialBooths";
 
@@ -18,20 +18,20 @@ export interface MapPoint {
   tag?: string;
 }
 
-// 스포원파크 중심 좌표
+// 스포원파크 중심 좌표 (수변공원 / 야외 분수광장)
 export const SPOWON_CENTER = {
-  lat: 35.28173,
-  lng: 129.09845,
+  lat: 35.291961,
+  lng: 129.105222,
 };
 
-// 주요 행사장 거점 & 시설
+// 주요 행사장 거점 & 시설 (카카오 로컬 공식 실측 좌표)
 const FACILITIES_AND_STAGES: MapPoint[] = [
   {
     id: "facility-main-square",
-    name: "A구역 · 야외 분수광장 (부스존)",
+    name: "A구역 · 야외 분수광장 (수변공원 부스존)",
     category: "facility",
-    lat: 35.28173,
-    lng: 129.09845,
+    lat: 35.291961,
+    lng: 129.105222,
     description: "4대 테마존 81개 공식 부스, 안내소, 의료지원 및 상품 수령처 운영",
     tag: "메인 광장",
   },
@@ -39,8 +39,8 @@ const FACILITIES_AND_STAGES: MapPoint[] = [
     id: "stage-gym",
     name: "B구역 · 실내체육관 (파견미사 & 무대)",
     category: "stage",
-    lat: 35.28315,
-    lng: 129.09780,
+    lat: 35.293054,
+    lng: 129.104745,
     description: "12:00 개방 무대공연, 1F 문화홀 지성소 성체조배, 16:30 BYD 파견미사",
     tag: "실내체육관",
   },
@@ -48,17 +48,35 @@ const FACILITIES_AND_STAGES: MapPoint[] = [
     id: "stage-outdoor",
     name: "C구역 · 가족공원 야외무대 (버스킹)",
     category: "stage",
-    lat: 35.28065,
-    lng: 129.09985,
+    lat: 35.292723,
+    lng: 129.103672,
     description: "청년 버스킹 문화공연, 상설 고해소(13:30~15:30) 운영",
     tag: "가족공원",
+  },
+  {
+    id: "facility-tennis-stadium",
+    name: "테니스경기장 (실내 센터)",
+    category: "facility",
+    lat: 35.292953,
+    lng: 129.105999,
+    description: "스포원파크 테니스경기장 및 실내 편의시설",
+    tag: "테니스경기장",
+  },
+  {
+    id: "facility-tennis-court",
+    name: "테니스장 (야외 코트)",
+    category: "facility",
+    lat: 35.291489,
+    lng: 129.106735,
+    description: "스포원파크 동남측 야외 테니스 코트 구역",
+    tag: "테니스장",
   },
   {
     id: "facility-shuttle",
     name: "북측 셔틀버스 정류장 (12번 게이트)",
     category: "facility",
-    lat: 35.28395,
-    lng: 129.09810,
+    lat: 35.293800,
+    lng: 129.104900,
     description: "노포역 ↔ 스포원파크 15분 간격 무료 셔틀버스 승하차장 및 지구별 접수대",
     tag: "셔틀/접수",
   },
@@ -66,8 +84,8 @@ const FACILITIES_AND_STAGES: MapPoint[] = [
     id: "facility-west-gate",
     name: "서측 주차장 (마을버스/귀가 셔틀)",
     category: "facility",
-    lat: 35.28250,
-    lng: 129.09570,
+    lat: 35.292500,
+    lng: 129.101800,
     description: "마을버스 정류장 및 오후 귀가 셔틀버스(19:00~20:30) 탑승지",
     tag: "서측주차장",
   },
@@ -75,30 +93,30 @@ const FACILITIES_AND_STAGES: MapPoint[] = [
     id: "facility-reward",
     name: "공식 상품 수령처 & 식수 배부처",
     category: "facility",
-    lat: 35.28160,
-    lng: 129.09825,
+    lat: 35.291800,
+    lng: 129.105050,
     description: "스탬프 완주 기념 굿즈 교환 및 미션북 선물 수령처",
     tag: "상품수령",
   },
 ];
 
-// 4대 테마존 대표 구역 핀
+// 4대 테마존 대표 구역 핀 (수변공원 중심 동서남북 배치)
 const ZONE_CENTER_POINTS: MapPoint[] = OFFICIAL_ZONES.map((zone) => {
   let lat = SPOWON_CENTER.lat;
   let lng = SPOWON_CENTER.lng;
 
   if (zone.id === "faith") {
-    lat = 35.28205;
-    lng = 129.09830;
+    lat = 35.291961;
+    lng = 129.104522; // 서측
   } else if (zone.id === "hope") {
-    lat = 35.28160;
-    lng = 129.09890;
+    lat = 35.291531; // 남측
+    lng = 129.105222;
   } else if (zone.id === "love") {
-    lat = 35.28125;
-    lng = 129.09825;
+    lat = 35.291961;
+    lng = 129.105922; // 동측
   } else if (zone.id === "sharing") {
-    lat = 35.28145;
-    lng = 129.09785;
+    lat = 35.292381; // 북측
+    lng = 129.105222;
   }
 
   return {
@@ -116,13 +134,13 @@ const ZONE_CENTER_POINTS: MapPoint[] = OFFICIAL_ZONES.map((zone) => {
 
 // 7성사 부스 좌표 (SSOT: officialBooths.ts 데이터와 조인하여 메타데이터 일관성 보장)
 const SACRAMENT_COORDINATES: Record<string, { lat: number; lng: number }> = {
-  "faith-11": { lat: 35.28198, lng: 129.09825 }, // 성품성사
-  "faith-14": { lat: 35.28212, lng: 129.09835 }, // 혼인성사
-  "hope-16": { lat: 35.28165, lng: 129.09885 },  // 고해성사
-  "hope-17": { lat: 35.28155, lng: 129.09895 },  // 병자성사
-  "love-13": { lat: 35.28135, lng: 129.09835 },  // 세례성사
-  "love-29": { lat: 35.28120, lng: 129.09815 },  // 견진성사
-  "love-30": { lat: 35.28115, lng: 129.09805 },  // 성체성사
+  "faith-11": { lat: 35.292211, lng: 129.105022 }, // 성품성사
+  "faith-14": { lat: 35.292351, lng: 129.105122 }, // 혼인성사
+  "hope-16": { lat: 35.291881, lng: 129.105622 },  // 고해성사
+  "hope-17": { lat: 35.291781, lng: 129.105722 },  // 병자성사
+  "love-13": { lat: 35.291581, lng: 129.105122 },  // 세례성사
+  "love-29": { lat: 35.291431, lng: 129.104922 },  // 견진성사
+  "love-30": { lat: 35.291381, lng: 129.104822 },  // 성체성사
 };
 
 const SACRAMENT_POINTS: MapPoint[] = [];
@@ -182,7 +200,7 @@ export interface FountainZoneBlock {
   description: string;
 }
 
-// 분수광장 중심(35.28173, 129.09845) 둘레의 4대 테마존 사각 블록
+// 분수광장 중심(35.291961, 129.105222) 둘레의 4대 테마존 사각 블록
 export const FOUNTAIN_ZONE_BLOCKS: FountainZoneBlock[] = [
   // 1. 북측: 나눔존 (2개 블록 및 굿즈/플리마켓)
   {
@@ -191,13 +209,13 @@ export const FOUNTAIN_ZONE_BLOCKS: FountainZoneBlock[] = [
     name: "Sharing Zone",
     koreanName: "나눔존",
     direction: "north",
-    centerLat: 35.28215,
-    centerLng: 129.09845,
+    centerLat: 35.29238,
+    centerLng: 129.10522,
     coordinates: [
-      { lat: 35.28230, lng: 129.09795 },
-      { lat: 35.28230, lng: 129.09895 },
-      { lat: 35.28200, lng: 129.09895 },
-      { lat: 35.28200, lng: 129.09795 },
+      { lat: 35.29253, lng: 129.10472 },
+      { lat: 35.29253, lng: 129.10572 },
+      { lat: 35.29223, lng: 129.10572 },
+      { lat: 35.29223, lng: 129.10472 },
     ],
     color: "#059669", // emerald-600
     fillColor: "#10B981",
@@ -214,13 +232,13 @@ export const FOUNTAIN_ZONE_BLOCKS: FountainZoneBlock[] = [
     name: "Love Zone",
     koreanName: "사랑존",
     direction: "east",
-    centerLat: 35.28173,
-    centerLng: 129.09915,
+    centerLat: 35.29196,
+    centerLng: 129.10592,
     coordinates: [
-      { lat: 35.28210, lng: 129.09890 },
-      { lat: 35.28210, lng: 129.09940 },
-      { lat: 35.28135, lng: 129.09940 },
-      { lat: 35.28135, lng: 129.09890 },
+      { lat: 35.29233, lng: 129.10567 },
+      { lat: 35.29233, lng: 129.10617 },
+      { lat: 35.29158, lng: 129.10617 },
+      { lat: 35.29158, lng: 129.10567 },
     ],
     color: "#E11D48", // rose-600
     fillColor: "#F43F5E",
@@ -237,13 +255,13 @@ export const FOUNTAIN_ZONE_BLOCKS: FountainZoneBlock[] = [
     name: "Faith Zone",
     koreanName: "믿음존",
     direction: "west",
-    centerLat: 35.28173,
-    centerLng: 129.09775,
+    centerLat: 35.29196,
+    centerLng: 129.10452,
     coordinates: [
-      { lat: 35.28210, lng: 129.09750 },
-      { lat: 35.28210, lng: 129.09800 },
-      { lat: 35.28135, lng: 129.09800 },
-      { lat: 35.28135, lng: 129.09750 },
+      { lat: 35.29233, lng: 129.10427 },
+      { lat: 35.29233, lng: 129.10477 },
+      { lat: 35.29158, lng: 129.10477 },
+      { lat: 35.29158, lng: 129.10427 },
     ],
     color: "#2563EB", // blue-600
     fillColor: "#3B82F6",
@@ -260,13 +278,13 @@ export const FOUNTAIN_ZONE_BLOCKS: FountainZoneBlock[] = [
     name: "Hope Zone",
     koreanName: "희망존",
     direction: "south",
-    centerLat: 35.28130,
-    centerLng: 129.09845,
+    centerLat: 35.29153,
+    centerLng: 129.10522,
     coordinates: [
-      { lat: 35.28145, lng: 129.09795 },
-      { lat: 35.28145, lng: 129.09895 },
-      { lat: 35.28115, lng: 129.09895 },
-      { lat: 35.28115, lng: 129.09795 },
+      { lat: 35.29168, lng: 129.10472 },
+      { lat: 35.29168, lng: 129.10572 },
+      { lat: 35.29138, lng: 129.10572 },
+      { lat: 35.29138, lng: 129.10472 },
     ],
     color: "#EA580C", // orange-600
     fillColor: "#F97316",
