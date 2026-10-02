@@ -80,6 +80,10 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
       const moveLatLon = new window.kakao.maps.LatLng(block.centerLat, block.centerLng);
       mapInstanceRef.current.panTo(moveLatLon);
     }
+
+    // 4대 테마존 폴리곤 터치 시 해당 구역 탭이 선택된 BoothListModal을 다이렉트로 즉시 오픈
+    setBoothModalInitialZone(block.zoneId);
+    setIsBoothModalOpen(true);
   }, []);
 
   // 1. 4대 테마존 폴리곤 및 구역 명칭 오버레이 렌더링

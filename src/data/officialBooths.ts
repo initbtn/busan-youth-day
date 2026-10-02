@@ -4,6 +4,10 @@ export interface OfficialBooth {
   isSacrament?: boolean; // 7성사 부스 여부
   sacramentType?: string;
   notes?: string;
+  organization?: string;
+  description?: string;
+  activities?: string[];
+  operatingHours?: string;
 }
 
 export interface ZoneData {
@@ -149,3 +153,47 @@ export const OFFICIAL_ZONES: ZoneData[] = [
     ],
   },
 ];
+
+export interface BoothDetail extends OfficialBooth {
+  zoneId: "faith" | "hope" | "love" | "sharing";
+  zoneName: string;
+  zoneColor: string;
+  badgeBg: string;
+  badgeText: string;
+}
+
+export function findBoothById(id: string): BoothDetail | null {
+  if (!id || typeof id !== "string") return null;
+  const parts = id.split("-");
+  if (parts.length < 2) return null;
+  const zoneId = parts[0] as "faith" | "hope" | "love" | "sharing";
+  const boothNumber = parseInt(parts[1], 10);
+  if (isNaN(boothNumber)) return null;
+
+  const zone = OFFICIAL_ZONES.find((z) => z.id === zoneId);
+  if (!zone) return null;
+
+  const booth = zone.booths.find((b) => b.number === boothNumber);
+  if (!booth) return null;
+
+  const defaultDescription = booth.isSacrament
+    ? `${booth.name}은(는) 가톨릭 교회의 거룩한 7성사 중 하나인 [${booth.sacramentType}]의 은총과 의미를 청년들의 시선에서 체험하고 사제 및 수도자들과 영적 나눔을 갖는 공식 체험관입니다.`
+    : `${booth.name} 부스는 2026 부산교구 젊은이의 날(BYD) 행사에서 청년 참가자들과 함께 신앙과 친교를 나누는 공식 운영 부스입니다.`;
+
+  const defaultActivities = booth.isSacrament
+    ? [`${booth.sacramentType} 교리 및 성사 의미 안내`, "영적 대화 및 기도 지향 봉헌", "기념 축복 카드 배부"]
+    : ["부스 고유 프로그램 및 미션 체험", "수도회/단체 소개 및 홍보물 배부", "스탬프 투어 확인"];
+
+  return {
+    ...booth,
+    zoneId: zone.id,
+    zoneName: zone.koreanName,
+    zoneColor: zone.color,
+    badgeBg: zone.badgeBg,
+    badgeText: zone.badgeText,
+    organization: booth.organization || (booth.isSacrament ? "부산교구 성소국 / 사제단" : booth.name),
+    description: booth.description || defaultDescription,
+    activities: booth.activities || defaultActivities,
+    operatingHours: booth.operatingHours || "10:00 - 15:00",
+  };
+}

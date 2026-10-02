@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "node tests/app-router-architecture.test.mjs && node tests/page-routing-spiritual-and-map.test.mjs && node tests/og-thumbnail-favicon-seo.test.mjs && node tests/treasure-hunt-reward.test.mjs && npx tsx tests/community-feed.test.mjs && npx tsx tests/map-and-booths.test.mjs && npx tsx tests/booth-list-modal.test.mjs && npx tsx tests/media-optimizer.test.mjs && npx tsx tests/kakao-auth-and-onboarding.test.mjs && npx tsx tests/schedule-zone-grid.test.mjs && npx tsx tests/kakao-sso-onboarding.test.mjs",
+    "test": "node tests/app-router-architecture.test.mjs && node tests/page-routing-spiritual-and-map.test.mjs && node tests/og-thumbnail-favicon-seo.test.mjs && node tests/treasure-hunt-reward.test.mjs && npx tsx tests/community-feed.test.mjs && npx tsx tests/map-and-booths.test.mjs && npx tsx tests/booth-list-modal.test.mjs && npx tsx tests/media-optimizer.test.mjs && npx tsx tests/kakao-auth-and-onboarding.test.mjs && npx tsx tests/schedule-zone-grid.test.mjs && npx tsx tests/kakao-sso-onboarding.test.mjs && npx tsx tests/booth-wiki-and-detail.test.mjs",
     "test:e2e": "playwright test"
   },
   "dependencies": {
