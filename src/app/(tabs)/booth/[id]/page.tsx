@@ -21,11 +21,15 @@ import {
   saveBoothReview,
   formatRelativeTime,
 } from "@/lib/boothReviews";
+import { useUser } from "@/context/UserContext";
+import { signInWithKakao } from "@/lib/auth/kakao";
 
 export default function BoothDetailPage() {
   const params = useParams();
   const router = useRouter();
   const boothId = typeof params?.id === "string" ? params.id : "";
+  const { user } = useUser();
+  const isKakaoSignedIn = !!(user && (user.email || user.provider === "kakao"));
 
   const [booth, setBooth] = useState<ReturnType<typeof findBoothById>>(null);
   const [reviews, setReviews] = useState<BoothReview[]>([]);
@@ -44,6 +48,11 @@ export default function BoothDetailPage() {
 
   const handleSubmitReview = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isKakaoSignedIn) {
+      alert("부스 방명록 작성은 카카오 로그인이 필요합니다.");
+      signInWithKakao();
+      return;
+    }
     if (!boothId || !reviewContent.trim()) return;
 
     setIsSubmitting(true);
@@ -203,35 +212,50 @@ export default function BoothDetailPage() {
           </span>
         </div>
 
-        {/* 후기 작성 폼 */}
-        <form onSubmit={handleSubmitReview} className="space-y-2 bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
-          <div className="flex items-center space-x-2">
-            <input
-              type="text"
-              placeholder="작성자 이름 또는 세례명 (선택)"
-              value={authorName}
-              onChange={(e) => setAuthorName(e.target.value)}
-              className="w-full text-xs px-3 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none focus:border-orange-500 font-medium"
-            />
-          </div>
-          <div className="flex space-x-2">
-            <textarea
-              placeholder="부스 체험 소감이나 응원의 한마디를 남겨보세요!"
-              value={reviewContent}
-              onChange={(e) => setReviewContent(e.target.value)}
-              rows={2}
-              className="flex-1 text-xs px-3 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none focus:border-orange-500 resize-none font-medium"
-            />
+        {/* 후기 작성 폼 또는 로그인 안내 */}
+        {!isKakaoSignedIn ? (
+          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center space-y-2">
+            <p className="text-xs text-slate-600 font-medium">
+              부스 방명록 및 후기 작성은 <strong>카카오 간편 로그인</strong> 후 이용하실 수 있습니다.
+            </p>
             <button
-              type="submit"
-              disabled={isSubmitting || !reviewContent.trim()}
-              className="px-4 bg-orange-500 hover:bg-orange-600 disabled:bg-slate-300 text-white rounded-xl text-xs font-bold flex flex-col items-center justify-center transition-colors shrink-0"
+              type="button"
+              onClick={() => signInWithKakao()}
+              className="py-2.5 px-4 bg-[#FEE500] hover:bg-[#FDD835] text-black font-bold rounded-xl text-xs inline-flex items-center space-x-1.5 shadow-xs transition-all active:scale-[0.99]"
             >
-              <Send className="w-3.5 h-3.5 mb-0.5" />
-              <span>등록</span>
+              <span>카카오로 간편 로그인하기</span>
             </button>
           </div>
-        </form>
+        ) : (
+          <form onSubmit={handleSubmitReview} className="space-y-2 bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+            <div className="flex items-center space-x-2">
+              <input
+                type="text"
+                placeholder="작성자 이름 또는 세례명 (기본: 내 프로필)"
+                value={authorName}
+                onChange={(e) => setAuthorName(e.target.value)}
+                className="w-full text-xs px-3 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none focus:border-orange-500 font-medium"
+              />
+            </div>
+            <div className="flex space-x-2">
+              <textarea
+                placeholder="부스 체험 소감이나 응원의 한마디를 남겨보세요!"
+                value={reviewContent}
+                onChange={(e) => setReviewContent(e.target.value)}
+                rows={2}
+                className="flex-1 text-xs px-3 py-2 rounded-xl bg-white border border-slate-200 focus:outline-none focus:border-orange-500 resize-none font-medium"
+              />
+              <button
+                type="submit"
+                disabled={isSubmitting || !reviewContent.trim()}
+                className="px-4 bg-orange-500 hover:bg-orange-600 disabled:bg-slate-300 text-white rounded-xl text-xs font-bold flex flex-col items-center justify-center transition-colors shrink-0"
+              >
+                <Send className="w-3.5 h-3.5 mb-0.5" />
+                <span>등록</span>
+              </button>
+            </div>
+          </form>
+        )}
 
         {/* 후기 목록 */}
         <div className="space-y-2.5 pt-1">

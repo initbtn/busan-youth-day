@@ -10,24 +10,6 @@ export interface PilgrimSaint {
 
 export const PILGRIM_SAINTS: PilgrimSaint[] = [
   {
-    id: "andrew-kim-taegon",
-    name: "성 김대건 안드레아",
-    groupName: "김대건 안드레아 그룹",
-    title: "한국 최초의 사제이자 순교자",
-    feastDay: "7월 5일 (대축일 9월 20일)",
-    patronage: "한국 성직자들의 주보",
-    motto: "부디 서로 사랑하고 화목하여 천국에서 영원히 만나자",
-  },
-  {
-    id: "paul-chong-hasang",
-    name: "성 정하상 바오로",
-    groupName: "정하상 바오로 그룹",
-    title: "평신도 지도자이자 순교자",
-    feastDay: "9월 20일",
-    patronage: "평신도 사도직의 주보",
-    motto: "주님을 증언하기 위해 목숨까지 바친 불꽃 같은 신앙",
-  },
-  {
     id: "john-paul-ii",
     name: "성 요한 바오로 2세",
     groupName: "요한 바오로 2세 그룹",
@@ -37,13 +19,13 @@ export const PILGRIM_SAINTS: PilgrimSaint[] = [
     motto: "두려워하지 마십시오! 그리스도께 문을 활짝 여십시오!",
   },
   {
-    id: "carlo-acutis",
-    name: "성 카를로 아쿠티스",
-    groupName: "카를로 아쿠티스 그룹",
-    title: "평신도 · 디지털 인터넷의 주보",
-    feastDay: "10월 12일",
-    patronage: "청소년 및 컴퓨터 프로그래머의 주보",
-    motto: "성체는 하늘나라로 향하는 나의 고속도로입니다",
+    id: "andrew-kim-taegon",
+    name: "성 김대건 안드레아",
+    groupName: "김대건 안드레아 그룹",
+    title: "한국 최초의 사제이자 순교자",
+    feastDay: "7월 5일 (대축일 9월 20일)",
+    patronage: "한국 성직자들의 주보",
+    motto: "부디 서로 사랑하고 화목하여 천국에서 영원히 만나자",
   },
   {
     id: "francesca-cabrini",
@@ -62,6 +44,29 @@ export const PILGRIM_SAINTS: PilgrimSaint[] = [
     feastDay: "2월 8일",
     patronage: "인신매매 피해자 및 억압받는 이들의 주보",
     motto: "온전히 주님께 내어맡길 때 우리는 참된 자유를 얻습니다",
+  },
+  {
+    id: "carlo-acutis",
+    name: "성 카를로 아쿠티스",
+    groupName: "카를로 아쿠티스 그룹",
+    title: "평신도 · 디지털 인터넷의 주보",
+    feastDay: "10월 12일",
+    patronage: "청소년 및 컴퓨터 프로그래머의 주보",
+    motto: "성체는 하늘나라로 향하는 나의 고속도로입니다",
+  },
+];
+
+// 하위 호환 및 ID 검색용 전체 성인 풀
+export const ALL_SAINTS_REGISTRY: PilgrimSaint[] = [
+  ...PILGRIM_SAINTS,
+  {
+    id: "paul-chong-hasang",
+    name: "성 정하상 바오로",
+    groupName: "정하상 바오로 그룹",
+    title: "평신도 지도자이자 순교자",
+    feastDay: "9월 20일",
+    patronage: "평신도 사도직의 주보",
+    motto: "주님을 증언하기 위해 목숨까지 바친 불꽃 같은 신앙",
   },
   {
     id: "francis-assisi",
@@ -149,5 +154,5 @@ export function getRandomPilgrimSaint(): PilgrimSaint {
  * 성인 ID로 성인 정보를 조회합니다.
  */
 export function getPilgrimSaintById(id: string): PilgrimSaint | undefined {
-  return PILGRIM_SAINTS.find((s) => s.id === id);
+  return PILGRIM_SAINTS.find((s) => s.id === id) || ALL_SAINTS_REGISTRY.find((s) => s.id === id);
 }

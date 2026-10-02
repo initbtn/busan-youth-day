@@ -32,7 +32,7 @@ export default function MapPage() {
               현장 가이드북
             </span>
             <h2 className="text-base font-black text-slate-900 leading-tight">
-              공식 부스 · 무대 · 행사장 안내
+              부스 · 무대 · 행사장 안내
             </h2>
           </div>
         </div>

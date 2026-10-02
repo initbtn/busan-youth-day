@@ -39,12 +39,17 @@ export function BoothListModal({
   const [onlySacrament, setOnlySacrament] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // 모달이 열릴 때 또는 initialZoneId prop 변경 시 필터 상태 동기화 (stale state 방지)
+  // 모달이 열릴 때 또는 initialZoneId prop 변경 시 필터 상태 동기화 및 body scroll lock
   useEffect(() => {
     if (isOpen) {
       setSelectedZoneFilter(initialZoneId);
       setOnlySacrament(false);
       setSearchQuery("");
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = prev;
+      };
     }
   }, [isOpen, initialZoneId]);
 
@@ -132,14 +137,14 @@ export function BoothListModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[88vh] border border-slate-100 overflow-hidden"
+        className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[88vh] border border-slate-100 overflow-hidden overscroll-contain"
       >
         {/* 모달 헤더 */}
         <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
           <div>
             <div className="flex items-center space-x-1.5">
               <span className="text-[10px] font-bold text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full">
-                공식 안내
+                상세 안내
               </span>
               <h3 className="text-sm font-black text-slate-900">
                 81개 전체 부스 목록 및 위치 탐색

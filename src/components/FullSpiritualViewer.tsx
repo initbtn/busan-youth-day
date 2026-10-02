@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { X, ZoomIn, ZoomOut, Share2, BookOpen } from "lucide-react";
 import { PATRON_SAINTS_DATA, PatronSaint } from "@/data/patronSaints";
@@ -15,6 +15,16 @@ export function FullSpiritualViewer({ type, onClose }: FullSpiritualViewerProps)
   const [selectedPrayerSide, setSelectedPrayerSide] = useState<"front" | "back">("front");
   const [selectedSaint, setSelectedSaint] = useState<PatronSaint>(PATRON_SAINTS_DATA[0]);
 
+  useEffect(() => {
+    if (type) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = prev;
+      };
+    }
+  }, [type]);
+
   if (!type) return null;
 
   const isPrayer = type === "prayer";
@@ -25,19 +35,19 @@ export function FullSpiritualViewer({ type, onClose }: FullSpiritualViewerProps)
   const handleZoomOut = () => setZoomLevel((prev) => Math.max(prev - 0.3, 0.8));
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-slate-950/95 backdrop-blur-md text-white animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex flex-col bg-slate-950/95 backdrop-blur-md text-white animate-in fade-in duration-200 overscroll-contain">
       {/* 상단 네비게이션 헤더 */}
       <header className="px-4 py-3 flex items-center justify-between border-b border-slate-800 bg-slate-900/80 sticky top-0 z-10">
         <div>
           <h2 className="text-sm font-bold text-white leading-tight">
-            {isPrayer && "2027 WYD 서울 공식 기도문 상본"}
+            {isPrayer && "2027 WYD 서울 기도문 상본"}
             {isSong && "청·청해 주제가: 하느님 나라에"}
             {isSaints && "2027 서울 WYD 수호성인 5인"}
           </h2>
           <p className="text-[10px] text-slate-400">
-            {isPrayer && "앞면(상본 심볼) & 뒷면(공식 기도문)"}
-            {isSong && "바오누리 작사·작곡 (공식 전면 악보)"}
-            {isSaints && "세계청년대회 공식 수호성인 소개 및 전구 기도"}
+            {isPrayer && "앞면(상본 심볼) & 뒷면(기도문)"}
+            {isSong && "바오누리 작사·작곡 (전면 악보)"}
+            {isSaints && "세계청년대회 수호성인 5인 소개 및 전구 기도"}
           </p>
         </div>
 
@@ -168,7 +178,7 @@ export function FullSpiritualViewer({ type, onClose }: FullSpiritualViewerProps)
                   : "text-slate-400 hover:text-white"
               }`}
             >
-              상본 뒷면 (공식 기도문)
+              상본 뒷면 (기도문)
             </button>
           </div>
 
@@ -186,7 +196,7 @@ export function FullSpiritualViewer({ type, onClose }: FullSpiritualViewerProps)
                   ? "/assets/wyd2027_prayer_card_front.webp"
                   : "/assets/wyd2027_prayer_card_back.webp"
               }
-              alt="2027 WYD 공식 기도문 상본"
+              alt="2027 WYD 기도문 상본"
               className="w-full h-auto object-contain block"
             />
           </div>
@@ -216,7 +226,7 @@ export function FullSpiritualViewer({ type, onClose }: FullSpiritualViewerProps)
       {/* 하단 툴바 안내 */}
       <footer className="py-2.5 px-4 bg-slate-900/90 border-t border-slate-800 text-center text-[11px] text-slate-400 flex items-center justify-between">
         <span>
-          {isSaints ? "2027 서울 세계청년대회 공식 수호성인 소개" : "손가락 핀치 줌으로 확대 가능"}
+          {isSaints ? "2027 서울 세계청년대회 수호성인 5인 소개" : "손가락 핀치 줌으로 확대 가능"}
         </span>
         <button
           onClick={() => {

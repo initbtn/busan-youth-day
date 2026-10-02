@@ -7,10 +7,12 @@ import { useUser } from "@/context/UserContext";
 import { QRCameraScanner } from "@/components/QRCameraScanner";
 import { OfficialBoothStageGuide } from "@/components/OfficialBoothStageGuide";
 import { TreasureHuntView } from "@/components/TreasureHuntView";
+import { signInWithKakao } from "@/lib/auth/kakao";
 import { QrCode, Gift, MapPin, Camera, BookOpen, Compass } from "lucide-react";
 
 export function StampBookView() {
-  const { stamps, addStamp, hasRewardCoupon, isRewardEligible } = useUser();
+  const { stamps, addStamp, hasRewardCoupon, isRewardEligible, user } = useUser();
+  const isKakaoSignedIn = !!(user && (user.email || user.provider === "kakao"));
   const [activeSubTab, setActiveSubTab] = useState<"official" | "treasure">("treasure");
   const [selectedBooth, setSelectedBooth] = useState<BoothItem | null>(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
@@ -29,6 +31,12 @@ export function StampBookView() {
   }, [hasRewardCoupon]);
 
   const handleApplyStamp = (qrCodeText: string) => {
+    if (!isKakaoSignedIn) {
+      setScanMessage({ text: "스탬프 획득을 위해 먼저 카카오 로그인을 진행해 주세요.", error: true });
+      setTimeout(() => setScanMessage(null), 3500);
+      return;
+    }
+
     const matched = BOOTHS_DATA.find(
       (b) =>
         b.qrCode.toLowerCase() === qrCodeText.trim().toLowerCase() ||
@@ -38,21 +46,30 @@ export function StampBookView() {
     if (matched) {
       const success = addStamp(matched.id);
       if (success) {
-        setScanMessage({ text: `🎉 [${matched.name}] 공식 스탬프를 획득했습니다!` });
+        setScanMessage({ text: `🎉 [${matched.name}] 스탬프를 획득했습니다!` });
       } else {
         setScanMessage({ text: `이미 스탬프를 획득한 부스입니다.`, error: true });
       }
     } else {
-      setScanMessage({ text: "유효하지 않은 공식 부스 QR 코드입니다.", error: true });
+      setScanMessage({ text: "유효하지 않은 부스 QR 코드입니다.", error: true });
     }
     setTimeout(() => setScanMessage(null), 3500);
+  };
+
+  const handleOpenScanner = () => {
+    if (!isKakaoSignedIn) {
+      alert("스탬프 투어 및 QR 스캔은 카카오 로그인이 필요합니다.");
+      signInWithKakao();
+      return;
+    }
+    setIsCameraOpen(true);
   };
 
   const progressPercent = Math.min(100, Math.round((stamps.length / 9) * 100));
 
   return (
     <div className="space-y-4">
-      {/* 1. 최상단 공식 부스 & 무대 프로그램 안내 배너 */}
+      {/* 1. 최상단 부스 & 무대 프로그램 안내 배너 */}
       <div
         onClick={() => setIsOfficialGuideOpen(true)}
         className="cursor-pointer bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-3xl p-4 shadow-md flex items-center justify-between hover:shadow-lg transition-all"
@@ -66,7 +83,7 @@ export function StampBookView() {
               <span className="text-[9px] bg-white/25 px-1.5 py-0.2 rounded-full font-bold">
                 공문 배치도 연동
               </span>
-              <span className="text-xs font-black">공식 81개 부스 & 무대 타임테이블</span>
+              <span className="text-xs font-black">81개 부스 & 무대 타임테이블</span>
             </div>
             <p className="text-[10px] text-orange-100 mt-0.5">
               믿음·희망·사랑·나눔 부스 위치와 실내/야외 공연 순서 보기 ➔
@@ -85,7 +102,7 @@ export function StampBookView() {
         </div>
       </div>
 
-      {/* 3. 투-트랙 탭 전환 (쭈양이 꾹! 행사장 보물찾기 vs 공식 9개 부스 스탬프) */}
+      {/* 3. 투-트랙 탭 전환 (쭈양이 꾹! 행사장 보물찾기 vs 부스 9개 스탬프) */}
       <div className="flex bg-slate-200/70 p-1 rounded-2xl text-xs font-bold">
         <button
           onClick={() => setActiveSubTab("treasure")}
@@ -107,7 +124,7 @@ export function StampBookView() {
           }`}
         >
           <QrCode className="w-3.5 h-3.5" />
-          <span>공식 9개 부스 스탬프</span>
+          <span>부스 9개 스탬프</span>
         </button>
       </div>
 
@@ -118,7 +135,7 @@ export function StampBookView() {
             <div className="flex items-center space-x-2">
               <Gift className="w-5 h-5 text-amber-100" />
               <span className="text-xs font-bold uppercase tracking-wider text-amber-100">
-                Official Reward Voucher
+                Reward Voucher
               </span>
             </div>
             <span className="text-xs font-bold px-2 py-0.5 bg-white/20 rounded-full">
@@ -158,7 +175,7 @@ export function StampBookView() {
         </div>
       )}
 
-      {/* 트랙 1: 공식 부스 9개 스탬프 뷰 */}
+      {/* 트랙 1: 부스 9개 스탬프 뷰 */}
       {activeSubTab === "official" && (
         <div className="space-y-4">
           {/* 상단 프로그레스 바 & 스탬프 북 요약 */}
@@ -167,7 +184,7 @@ export function StampBookView() {
               <div>
                 <div className="flex items-center space-x-1.5">
                   <span className="text-xl">📋</span>
-                  <h2 className="text-base font-black text-slate-900">공식 부스 스탬프 투어</h2>
+                  <h2 className="text-base font-black text-slate-900">부스 스탬프 투어</h2>
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">
                   믿음·희망·사랑 (각 존별 7성사 1개 + 일반 2개 = 총 9개)
@@ -193,11 +210,11 @@ export function StampBookView() {
 
             {/* 실제 모바일 카메라 QR 스캐너 버튼 */}
             <button
-              onClick={() => setIsCameraOpen(true)}
+              onClick={handleOpenScanner}
               className="mt-4 w-full py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-2xl text-xs font-bold flex items-center justify-center space-x-2 shadow-md active:scale-98 transition-all"
             >
               <Camera className="w-4 h-4" />
-              <span>카메라로 공식 부스 QR 스캔하기</span>
+              <span>카메라로 부스 QR 스캔하기</span>
             </button>
 
             {/* 안내 메시지 */}

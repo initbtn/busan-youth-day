@@ -18,8 +18,8 @@ export default function PrayerPage() {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: "2027 WYD 서울 공식 기도문 상본",
-          text: "2027 서울 세계청년대회 공식 기도문을 확인해보세요.",
+          title: "2027 WYD 서울 기도문 상본",
+          text: "2027 서울 세계청년대회 기도문을 확인해보세요.",
           url: window.location.href,
         });
       } catch (err) {
@@ -48,7 +48,7 @@ export default function PrayerPage() {
               영적 순례 자료
             </span>
             <h2 className="text-base font-black text-slate-900 leading-tight">
-              2027 WYD 서울 공식 기도문 상본
+              2027 WYD 서울 기도문 상본
             </h2>
           </div>
         </div>

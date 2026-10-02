@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { DISTRICT_PARISH_MAP, AFFILIATION_ROLES, AffiliationRole } from "@/data/parishes";
 import { getRandomPilgrimSaint, getPilgrimSaintById, PilgrimSaint } from "@/data/saints";
@@ -18,6 +18,16 @@ interface OnboardingModalProps {
 export function OnboardingModal({ isOpen, onClose }: OnboardingModalProps) {
   const { user, setUserProfile } = useUser();
   const isKakaoSignedIn = !!(user && (user.email || user.provider === "kakao"));
+
+  useEffect(() => {
+    if (isOpen) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = prev;
+      };
+    }
+  }, [isOpen]);
   const [step, setStep] = useState<1 | 2 | 3 | 4>(() => {
     if (user && (user.email || user.provider === "kakao") && !user.termsAgreed) {
       return 2;
@@ -26,7 +36,7 @@ export function OnboardingModal({ isOpen, onClose }: OnboardingModalProps) {
   });
 
   // 폼 입력 상태
-  const [name, setName] = useState(user?.name || "");
+  const name = user?.name || "";
   const [selectedDistrict, setSelectedDistrict] = useState(
     user?.district || DISTRICT_PARISH_MAP[0].district
   );
@@ -191,12 +201,16 @@ export function OnboardingModal({ isOpen, onClose }: OnboardingModalProps) {
                 </button>
               </div>
             ) : (
-              <div className="space-y-2 pt-1">
+              <div className="space-y-3 pt-2">
+                <p className="text-xs text-slate-600 leading-relaxed text-center">
+                  2026 부산교구 청년의 날 디지털 순례는<br />
+                  <strong className="text-amber-600 font-bold">카카오 간편 로그인</strong>으로 본인 인증 후 참여하실 수 있습니다.
+                </p>
                 <button
                   type="button"
                   onClick={handleKakaoLogin}
                   disabled={isKakaoLoading}
-                  className="w-full py-3 px-4 bg-[#FEE500] hover:bg-[#FDD835] text-[#000000] font-bold rounded-2xl text-xs flex items-center justify-center space-x-2 shadow-sm transition-all"
+                  className="w-full py-3.5 px-4 bg-[#FEE500] hover:bg-[#FDD835] text-[#000000] font-bold rounded-2xl text-xs flex items-center justify-center space-x-2 shadow-sm transition-all active:scale-[0.99]"
                 >
                   <svg
                     className="w-4 h-4 fill-current"
@@ -209,38 +223,14 @@ export function OnboardingModal({ isOpen, onClose }: OnboardingModalProps) {
                     {isKakaoLoading ? "카카오 인가 창으로 이동 중..." : "카카오로 3초 만에 시작하기"}
                   </span>
                 </button>
-                <p className="text-[10px] text-center text-slate-400">
-                  프로필 닉네임과 계정(이메일)이 안전하게 연동됩니다.
-                </p>
+                <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 text-[11px] text-slate-500 space-y-1">
+                  <p className="font-bold text-slate-700">🔒 참가자 인증 혜택</p>
+                  <p>• 소통피드 현장 글쓰기 및 축제 나눔</p>
+                  <p>• 부스별 독립 위키 방문 리뷰 및 방명록 작성</p>
+                  <p>• QR 스탬프 투어 및 보물찾기 리워드 참여</p>
+                </div>
               </div>
             )}
-
-            <div className="relative flex py-1 items-center">
-              <div className="flex-grow border-t border-slate-200"></div>
-              <span className="flex-shrink mx-3 text-[10px] text-slate-400 font-medium">또는 직접 이름 입력</span>
-              <div className="flex-grow border-t border-slate-200"></div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                참가자 이름 (또는 세례명)
-              </label>
-              <input
-                type="text"
-                placeholder="예: 홍길동 (베드로)"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-orange-500"
-              />
-            </div>
-
-            <button
-              onClick={() => setStep(2)}
-              className="w-full mt-2 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition-colors shadow-md flex items-center justify-center space-x-1"
-            >
-              <span>다음: 약관 동의</span>
-              <ChevronRight className="w-4 h-4" />
-            </button>
           </div>
         )}
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { OFFICIAL_ZONES } from "@/data/officialBooths";
 import { INDOOR_STAGE_PROGRAMS, OUTDOOR_STAGE_PROGRAMS } from "@/data/stageSchedule";
 import { KakaoMapView } from "@/components/KakaoMapView";
@@ -16,21 +16,31 @@ export function OfficialBoothStageGuide({ isOpen, onClose, defaultTab = "booths"
   const [activeTab, setActiveTab] = useState<"booths" | "stages" | "map">(defaultTab);
   const [selectedZone, setSelectedZone] = useState<"faith" | "hope" | "love" | "sharing">("faith");
 
+  useEffect(() => {
+    if (isOpen) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = prev;
+      };
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const currentZoneData = OFFICIAL_ZONES.find((z) => z.id === selectedZone)!;
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="max-w-md w-full mx-auto flex-1 flex flex-col bg-slate-50 overflow-hidden shadow-2xl relative">
+      <div className="max-w-md w-full mx-auto flex-1 flex flex-col bg-slate-50 overflow-hidden shadow-2xl relative overscroll-contain">
         {/* 상단 헤더 */}
         <header className="px-5 py-4 bg-white border-b border-slate-100 flex items-center justify-between sticky top-0 z-10">
           <div>
             <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full inline-block mb-0.5">
-              공식 가이드북
+              가이드북
             </span>
             <h2 className="text-base font-black text-slate-900 leading-tight">
-              공식 부스 · 무대 · 행사장 안내
+              부스 · 무대 · 행사장 안내
             </h2>
           </div>
           <button
@@ -77,18 +87,18 @@ export function OfficialBoothStageGuide({ isOpen, onClose, defaultTab = "booths"
 
         {/* 탭 본문 내용 */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {/* 1. 4대 테마존 공식 부스 탭 */}
+          {/* 1. 4대 테마존 부스 탭 */}
           {activeTab === "booths" && (
             <div className="space-y-4">
               {/* 스탬프 획득 규칙 배너 */}
               <div className="p-4 bg-gradient-to-br from-amber-50 to-orange-50 border border-orange-200/70 rounded-3xl space-y-1.5">
                 <div className="flex items-center space-x-1.5 text-orange-950 font-bold text-xs">
                   <Sparkles className="w-4 h-4 text-orange-500" />
-                  <span>공식 스탬프 획득 및 굿즈 교환 규칙</span>
+                  <span>스탬프 획득 및 굿즈 교환 규칙</span>
                 </div>
                 <p className="text-[11px] text-slate-700 leading-relaxed">
                   • <strong>운영 시간</strong>: 10:00 ~ 15:00 (A구역 야외 분수광장)<br />
-                  • <strong>스탬프 완성</strong>: 믿음·희망·사랑 각 존별 <strong>7성사 부스 1개 + 일반 부스 2개 = 총 9개</strong> 달성 시 &apos;상품 수령처&apos;에서 공식 굿즈 선착순 교환!
+                  • <strong>스탬프 완성</strong>: 믿음·희망·사랑 각 존별 <strong>7성사 부스 1개 + 일반 부스 2개 = 총 9개</strong> 달성 시 &apos;상품 수령처&apos;에서 굿즈 선착순 교환!
                 </p>
               </div>
 

@@ -12,7 +12,7 @@ test("카카오 SSO 간편 인증 및 온보딩 순례 그룹 무작위 배정 �
 
     const saintsModule = await import(path.join(ROOT_DIR, "src/data/saints.ts"));
     assert.ok(Array.isArray(saintsModule.PILGRIM_SAINTS), "PILGRIM_SAINTS 배열이 정의되어 있어야 합니다.");
-    assert.ok(saintsModule.PILGRIM_SAINTS.length >= 10, "순례 그룹 성인은 최소 10명 이상 등록되어야 합니다.");
+    assert.ok(saintsModule.PILGRIM_SAINTS.length >= 5, "순례 그룹 성인은 최소 5명 이상 등록되어야 합니다.");
 
     // 성인 데이터 구조 검증
     for (const saint of saintsModule.PILGRIM_SAINTS) {

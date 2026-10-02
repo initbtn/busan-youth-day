@@ -5,17 +5,33 @@ import Image from "next/image";
 import { HIDDEN_TREASURE_SPOTS, HiddenTreasureSpot } from "@/data/treasureHunt";
 import { useUser } from "@/context/UserContext";
 import { QRCameraScanner } from "@/components/QRCameraScanner";
+import { signInWithKakao } from "@/lib/auth/kakao";
 import { Camera, Sparkles, CheckCircle2, MapPin, X, Trophy } from "lucide-react";
 
 export function TreasureHuntView() {
-  const { treasures, addTreasure } = useUser();
+  const { treasures, addTreasure, user } = useUser();
+  const isKakaoSignedIn = !!(user && (user.email || user.provider === "kakao"));
   const [selectedSpot, setSelectedSpot] = useState<HiddenTreasureSpot | null>(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [foundSuccessSpot, setFoundSuccessSpot] = useState<HiddenTreasureSpot | null>(null);
 
   const progressPercent = Math.round((treasures.length / HIDDEN_TREASURE_SPOTS.length) * 100);
 
+  const handleOpenScanner = () => {
+    if (!isKakaoSignedIn) {
+      alert("보물찾기 QR 스캔 및 참여는 카카오 로그인이 필요합니다.");
+      signInWithKakao();
+      return;
+    }
+    setIsCameraOpen(true);
+  };
+
   const handleScanTreasure = (decodedCode: string) => {
+    if (!isKakaoSignedIn) {
+      alert("보물찾기 참여는 카카오 로그인이 필요합니다.");
+      signInWithKakao();
+      return;
+    }
     const matched = HIDDEN_TREASURE_SPOTS.find(
       (s) => s.qrCode === decodedCode || decodedCode.includes(s.qrCode)
     );
@@ -70,14 +86,38 @@ export function TreasureHuntView() {
         </div>
       </div>
 
-      {/* 보물찾기 카메라 스캔 버튼 */}
-      <button
-        onClick={() => setIsCameraOpen(true)}
-        className="w-full py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-2xl text-xs font-bold flex items-center justify-center space-x-2 shadow-md active:scale-98 transition-all"
-      >
-        <Camera className="w-4 h-4" />
-        <span>숨겨진 쭈양이 보물 QR 스캔하기</span>
-      </button>
+      {/* 비로그인 참가자 안내 또는 보물찾기 카메라 스캔 버튼 */}
+      {!isKakaoSignedIn ? (
+        <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm text-center space-y-3">
+          <div className="w-10 h-10 mx-auto rounded-full bg-[#FEE500]/20 flex items-center justify-center text-lg">
+            🗺️
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-slate-800">
+              보물찾기 참여는 카카오 로그인이 필요합니다
+            </h3>
+            <p className="text-xs text-slate-500 mt-1">
+              로그인 후 행사장 곳곳의 숨겨진 쭈양이 QR을 스캔하고 리워드를 받으세요!
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => signInWithKakao()}
+            className="w-full py-3 bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] font-bold rounded-2xl text-xs flex items-center justify-center space-x-2 transition-colors shadow-sm active:scale-98"
+          >
+            <span className="text-sm">💬</span>
+            <span>카카오로 3초 만에 시작하기</span>
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={handleOpenScanner}
+          className="w-full py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-2xl text-xs font-bold flex items-center justify-center space-x-2 shadow-md active:scale-98 transition-all"
+        >
+          <Camera className="w-4 h-4" />
+          <span>숨겨진 쭈양이 보물 QR 스캔하기</span>
+        </button>
+      )}
 
       {/* 5대 히든 보물 힌트 리스트 */}
       <div className="space-y-3">
