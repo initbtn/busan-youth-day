@@ -7,7 +7,7 @@ export interface KakaoAuthOptions {
 
 /**
  * Supabase Auth를 통한 카카오 SSO 간편 로그인
- * PRD §2.1 요구사항: 카카오 프로필 및 계정(Email) 필수 수집 스코프 포함
+ * (카카오 콘솔 동의항목 미설정 충돌인 KOE205 방지를 위해 scopes 파라미터는 전달하지 않으며, 이메일은 수집하지 않습니다)
  */
 export async function signInWithKakao(
   client?: SupabaseClient,

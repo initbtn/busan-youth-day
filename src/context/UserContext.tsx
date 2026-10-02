@@ -25,6 +25,7 @@ export interface UserProfile {
   pilgrimageGroup?: string; // 통합 순례단 명칭 ("성 김대건 안드레아 3조")
   email?: string;
   avatarUrl?: string;
+  baptismalName?: string; // 세례명 (예: 아녜스, 미카엘, 프란치스코)
   termsAgreed?: boolean;
   onboardingCompleted?: boolean;
   provider?: string;
@@ -184,6 +185,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
                   `${saintName} ${prev?.groupNumber || 1}조`,
                 email: authUser.email,
                 avatarUrl: meta.avatar_url || meta.picture,
+                baptismalName: meta.baptismal_name || meta.baptismalName || prev?.baptismalName,
                 termsAgreed: true,
                 onboardingCompleted: true,
                 provider: authUser.app_metadata?.provider || "kakao",
