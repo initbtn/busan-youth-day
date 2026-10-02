@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Music, Sparkles } from "lucide-react";
+import { ArrowLeft, Music, Sparkles, ChevronRight } from "lucide-react";
 import { KakaoMapView } from "@/components/KakaoMapView";
 import { OFFICIAL_ZONES, ZoneData } from "@/data/officialBooths";
 import { INDOOR_STAGE_PROGRAMS, OUTDOOR_STAGE_PROGRAMS } from "@/data/stageSchedule";
@@ -123,14 +123,18 @@ export default function MapPage() {
 
             <div className="bg-white rounded-2xl border border-slate-100 shadow-xs divide-y divide-slate-100 overflow-hidden max-h-[500px] overflow-y-auto">
               {currentZoneData.booths.map((b) => (
-                <div key={b.number} className="p-3.5 flex items-center justify-between text-xs">
+                <Link
+                  key={b.number}
+                  href={`/booth/${currentZoneData.id}-${b.number}`}
+                  className="p-3.5 flex items-center justify-between text-xs hover:bg-orange-50/60 transition-colors group"
+                >
                   <div className="flex items-center space-x-3">
-                    <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-600 font-black text-[11px] flex items-center justify-center flex-shrink-0">
+                    <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-600 font-black text-[11px] flex items-center justify-center flex-shrink-0 group-hover:bg-orange-500 group-hover:text-white transition-colors">
                       {b.number}
                     </span>
                     <div>
                       <div className="flex items-center space-x-1.5">
-                        <span className="font-bold text-slate-900">{b.name}</span>
+                        <span className="font-bold text-slate-900 group-hover:text-orange-950 transition-colors">{b.name}</span>
                         {b.isSacrament && (
                           <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.2 rounded-full font-bold">
                             7성사 부스
@@ -139,12 +143,15 @@ export default function MapPage() {
                       </div>
                     </div>
                   </div>
-                  {b.isSacrament && (
-                    <span className="text-[10px] font-semibold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-lg flex-shrink-0">
-                      필수 1개
-                    </span>
-                  )}
-                </div>
+                  <div className="flex items-center space-x-2">
+                    {b.isSacrament && (
+                      <span className="text-[10px] font-semibold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-lg flex-shrink-0">
+                        필수 1개
+                      </span>
+                    )}
+                    <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-orange-500 transition-colors" />
+                  </div>
+                </Link>
               ))}
             </div>
           </div>

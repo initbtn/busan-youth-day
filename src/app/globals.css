@@ -25,3 +25,12 @@ body {
     text-wrap: balance;
   }
 }
+
+/* 전역 스크롤바 숨김 (모바일 앱 UX 일원화) */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+*::-webkit-scrollbar {
+  display: none;
+}

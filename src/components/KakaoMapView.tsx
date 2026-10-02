@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   SPOWON_CENTER,
   SPOWON_MAP_POINTS,
@@ -13,12 +14,12 @@ import { BoothListModal } from "@/components/BoothListModal";
 import {
   Sparkles,
   Crosshair,
-  ExternalLink,
   AlertCircle,
   X,
   Navigation,
   Layers,
   ListFilter,
+  ChevronRight,
 } from "lucide-react";
 
 interface KakaoOverlayItem {
@@ -38,6 +39,7 @@ interface KakaoMapViewProps {
 }
 
 export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewProps) {
+  const router = useRouter();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapInstanceRef = useRef<any>(null);
@@ -163,7 +165,10 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
       const map = mapInstanceRef.current;
 
       const filteredPoints = SPOWON_MAP_POINTS.filter((p) => {
-        if (filter === "all") return true;
+        if (filter === "all") {
+          // 핀 과밀 해소: 전체 보기에서는 7성사 필수 부스와 주요 거점 시설/무대만 우선 노출
+          return p.isSacrament || p.category === "stage" || p.category === "facility";
+        }
         if (filter === "sacrament") return p.category === "sacrament";
         if (filter === "zone") return p.category === "zone";
         if (filter === "facility") return p.category === "facility" || p.category === "stage";
@@ -392,10 +397,16 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
     );
   };
 
-  // 카카오맵 외부 길찾기 링크 열기
-  const handleOpenKakaoNavi = (point: MapPoint) => {
-    const url = `https://map.kakao.com/link/to/${encodeURIComponent(point.name)},${point.lat},${point.lng}`;
-    window.open(url, "_blank");
+  // 부스 상세페이지 또는 부스 목록으로 이동 (거점 시설은 안내 알림)
+  const handleOpenBoothDetail = (point: MapPoint) => {
+    if (point.zoneId && point.boothNumber) {
+      router.push(`/booth/${point.zoneId}-${point.boothNumber}`);
+    } else if (point.zoneId) {
+      setBoothModalInitialZone(point.zoneId as "faith" | "hope" | "love" | "sharing");
+      setIsBoothModalOpen(true);
+    } else {
+      alert(`[${point.name}]\n${point.description || "2026 부산 청년의 날 공식 거점 및 편의시설입니다."}`);
+    }
   };
 
   // 선택된 구역 블록의 상세 부스 데이터 조회
@@ -656,13 +667,23 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
             <span className="text-[10px] text-slate-400 font-medium">
               📍 스포원파크 분수광장 거점
             </span>
-            <button
-              onClick={() => handleOpenKakaoNavi(selectedPoint)}
-              className="flex items-center space-x-1 px-3 py-1 bg-amber-400 hover:bg-amber-500 text-slate-900 rounded-xl text-xs font-bold transition-all shadow-xs"
-            >
-              <span>카카오맵 길안내</span>
-              <ExternalLink className="w-3 h-3" />
-            </button>
+            {selectedPoint.zoneId ? (
+              <button
+                onClick={() => handleOpenBoothDetail(selectedPoint)}
+                className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95"
+              >
+                <span>부스 상세 보기</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            ) : (
+              <button
+                onClick={() => handleOpenBoothDetail(selectedPoint)}
+                className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-slate-700 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95"
+              >
+                <span>시설 안내 보기</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
       )}
