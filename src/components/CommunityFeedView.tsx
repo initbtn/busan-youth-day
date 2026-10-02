@@ -112,17 +112,31 @@ export function CommunityFeedView() {
     };
   }, [isUploadModalOpen, reportingPost, viewerOpen]);
 
+  const handleCloseUploadModal = React.useCallback(() => {
+    if (isPosting) return;
+    if (newContent.trim() || selectedFiles.length > 0) {
+      if (!confirm("작성 중인 내용이 있습니다. 닫으시겠습니까?")) {
+        return;
+      }
+    }
+    setNewContent("");
+    previewUrls.forEach((url) => URL.revokeObjectURL(url));
+    setSelectedFiles([]);
+    setPreviewUrls([]);
+    setIsUploadModalOpen(false);
+  }, [isPosting, newContent, selectedFiles, previewUrls]);
+
   // 신고 모달 / 업로드 모달 ESC 키 닫기
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         if (reportingPost) setReportingPost(null);
-        if (isUploadModalOpen && !isPosting) setIsUploadModalOpen(false);
+        if (isUploadModalOpen && !isPosting) handleCloseUploadModal();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [reportingPost, isUploadModalOpen, isPosting]);
+  }, [reportingPost, isUploadModalOpen, isPosting, handleCloseUploadModal]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -505,6 +519,7 @@ export function CommunityFeedView() {
                       className="w-full h-full object-cover"
                       controls
                       preload="metadata"
+                      onClick={(e) => e.stopPropagation()}
                     />
                   ) : (
                     <img
@@ -639,7 +654,7 @@ export function CommunityFeedView() {
           className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4"
           onClick={(e) => {
             if (e.target === e.currentTarget && !isPosting) {
-              setIsUploadModalOpen(false);
+              handleCloseUploadModal();
             }
           }}
         >
@@ -652,7 +667,7 @@ export function CommunityFeedView() {
               <button
                 type="button"
                 disabled={isPosting}
-                onClick={() => setIsUploadModalOpen(false)}
+                onClick={handleCloseUploadModal}
                 className="p-1 text-slate-400 hover:text-slate-600 rounded-full"
               >
                 <X className="w-5 h-5" />
@@ -758,7 +773,7 @@ export function CommunityFeedView() {
                   <button
                     type="button"
                     disabled={isPosting}
-                    onClick={() => setIsUploadModalOpen(false)}
+                    onClick={handleCloseUploadModal}
                     className="px-3.5 py-2 text-slate-500 hover:bg-slate-100 rounded-xl text-xs font-semibold transition-all"
                   >
                     취소

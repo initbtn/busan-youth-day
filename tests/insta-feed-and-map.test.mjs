@@ -25,6 +25,12 @@ describe("지도 핀 간소화, 부스 상세 직결, 인스타그램 스타일 
       content.includes("부스 상세") || content.includes("booth/"),
       "핀 터치 시 부스 상세페이지로 이동하는 동선이 제공되어야 함"
     );
+
+    // 거점/시설 핀 먹통 방어 분기 확인
+    assert.ok(
+      content.includes("시설 안내") || content.includes("description"),
+      "zoneId가 없는 시설/무대 핀에 대한 fallback 안내 분기가 구현되어야 함"
+    );
   });
 
   it("DoD 2: /map 부스 탭 81개 리스트에서 /booth/[id] 라우팅 링크 연동 검증", () => {
@@ -69,6 +75,18 @@ describe("지도 핀 간소화, 부스 상세 직결, 인스타그램 스타일 
     assert.ok(
       content.includes("comments") || content.includes("handleComment") || content.includes("댓글"),
       "댓글 표시 및 작성 인터페이스가 포함되어야 함"
+    );
+
+    // 비디오 controls 이벤트 버블링 방지 확인
+    assert.ok(
+      content.includes("stopPropagation"),
+      "비디오 조작 시 전체화면 뷰어가 열리지 않도록 stopPropagation 처리가 되어야 함"
+    );
+
+    // 글쓰기 모달 닫기 시 상태 정리 핸들러 확인
+    assert.ok(
+      content.includes("handleCloseUploadModal"),
+      "글쓰기 모달 닫기 시 상태를 초기화하는 핸들러가 포함되어야 함"
     );
   });
 

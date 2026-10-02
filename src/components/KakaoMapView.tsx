@@ -397,13 +397,15 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
     );
   };
 
-  // 부스 상세페이지 또는 부스 목록으로 이동
+  // 부스 상세페이지 또는 부스 목록으로 이동 (거점 시설은 안내 알림)
   const handleOpenBoothDetail = (point: MapPoint) => {
     if (point.zoneId && point.boothNumber) {
       router.push(`/booth/${point.zoneId}-${point.boothNumber}`);
     } else if (point.zoneId) {
       setBoothModalInitialZone(point.zoneId as "faith" | "hope" | "love" | "sharing");
       setIsBoothModalOpen(true);
+    } else {
+      alert(`[${point.name}]\n${point.description || "2026 부산 청년의 날 공식 거점 및 편의시설입니다."}`);
     }
   };
 
@@ -665,13 +667,23 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
             <span className="text-[10px] text-slate-400 font-medium">
               📍 스포원파크 분수광장 거점
             </span>
-            <button
-              onClick={() => handleOpenBoothDetail(selectedPoint)}
-              className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95"
-            >
-              <span>부스 상세 보기</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
+            {selectedPoint.zoneId ? (
+              <button
+                onClick={() => handleOpenBoothDetail(selectedPoint)}
+                className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95"
+              >
+                <span>부스 상세 보기</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            ) : (
+              <button
+                onClick={() => handleOpenBoothDetail(selectedPoint)}
+                className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-slate-700 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95"
+              >
+                <span>시설 안내 보기</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
       )}
