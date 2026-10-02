@@ -9,9 +9,9 @@ describe("Kakao Map & Booth Overlay Integrity (Issue #19)", () => {
     );
     const { OFFICIAL_ZONES } = await import("../src/data/officialBooths.ts");
 
-    // 중심 좌표 검증 (스포원파크 야외 분수광장)
-    assert.equal(SPOWON_CENTER.lat, 35.28173);
-    assert.equal(SPOWON_CENTER.lng, 129.09845);
+    // 중심 좌표 검증 (스포원파크 야외 분수광장 / 수변공원)
+    assert.equal(SPOWON_CENTER.lat, 35.291961);
+    assert.equal(SPOWON_CENTER.lng, 129.105222);
 
     // 7성사 부스 목록 추출
     const expectedSacraments = [];
@@ -61,19 +61,45 @@ describe("Kakao Map & Booth Overlay Integrity (Issue #19)", () => {
     assert.ok(facilityPins.length >= 5);
 
     // 모든 좌표가 스포원파크 지리적 경계 내에 있는지 검증
-    // 위도: 35.27 ~ 35.29, 경도: 129.09 ~ 129.11
+    // 위도: 35.288 ~ 35.296, 경도: 129.100 ~ 129.110
     SPOWON_MAP_POINTS.forEach((point) => {
       assert.ok(
-        point.lat >= 35.27 && point.lat <= 35.29,
+        point.lat >= 35.288 && point.lat <= 35.296,
         `위도 범위 초과: ${point.name} (${point.lat})`
       );
       assert.ok(
-        point.lng >= 129.09 && point.lng <= 129.11,
+        point.lng >= 129.100 && point.lng <= 129.110,
         `경도 범위 초과: ${point.name} (${point.lng})`
       );
       assert.ok(point.name && point.name.length > 0);
       assert.ok(point.description && point.description.length > 0);
     });
+
+    // 주요 거점 5대 시설 실측 좌표 검증 (Issue #47)
+    const gym = facilityPins.find((p) => p.name.includes("실내체육관"));
+    assert.ok(gym, "실내체육관 시설이 존재해야 합니다.");
+    assert.equal(gym.lat, 35.293054);
+    assert.equal(gym.lng, 129.104745);
+
+    const park = facilityPins.find((p) => p.name.includes("가족공원"));
+    assert.ok(park, "가족공원 시설이 존재해야 합니다.");
+    assert.equal(park.lat, 35.292723);
+    assert.equal(park.lng, 129.103672);
+
+    const tennisStadium = facilityPins.find((p) => p.name.includes("테니스경기장"));
+    assert.ok(tennisStadium, "테니스경기장 시설이 존재해야 합니다.");
+    assert.equal(tennisStadium.lat, 35.292953);
+    assert.equal(tennisStadium.lng, 129.105999);
+
+    const tennisCourt = facilityPins.find((p) => p.name.includes("테니스장"));
+    assert.ok(tennisCourt, "테니스장 시설이 존재해야 합니다.");
+    assert.equal(tennisCourt.lat, 35.291489);
+    assert.equal(tennisCourt.lng, 129.106735);
+
+    const square = facilityPins.find((p) => p.name.includes("분수광장") || p.name.includes("수변공원"));
+    assert.ok(square, "수변공원/분수광장 시설이 존재해야 합니다.");
+    assert.equal(square.lat, 35.291961);
+    assert.equal(square.lng, 129.105222);
   });
 
   // 3. 필터링 로직 단위 테스트
@@ -99,7 +125,7 @@ describe("Kakao Map & Booth Overlay Integrity (Issue #19)", () => {
     assert.equal(all.length, SPOWON_MAP_POINTS.length);
     assert.equal(sacraments.length, 7);
     assert.equal(zones.length, 4);
-    assert.equal(facilities.length, 6);
+    assert.ok(facilities.length >= 6);
 
     // 7성사 필터에는 비-7성사 부스가 포함되지 않아야 함
     sacraments.forEach((p) => {
@@ -127,8 +153,8 @@ describe("Kakao Map & Booth Overlay Integrity (Issue #19)", () => {
 
     FOUNTAIN_ZONE_BLOCKS.forEach((block) => {
       assert.ok(block.coordinates && block.coordinates.length >= 3, "폴리곤 좌표가 최소 3개 이상이어야 합니다.");
-      assert.ok(block.centerLat >= 35.27 && block.centerLat <= 35.29);
-      assert.ok(block.centerLng >= 129.09 && block.centerLng <= 129.11);
+      assert.ok(block.centerLat >= 35.288 && block.centerLat <= 35.296);
+      assert.ok(block.centerLng >= 129.100 && block.centerLng <= 129.110);
       assert.ok(block.color && block.color.length > 0);
       assert.ok(block.boothCount > 0);
     });
