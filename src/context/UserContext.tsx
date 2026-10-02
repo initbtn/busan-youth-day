@@ -2,6 +2,14 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { AffiliationRole } from "@/data/parishes";
+import { createClient } from "@/lib/supabase/client";
+import { signOut as kakaoSignOut } from "@/lib/auth/kakao";
+
+export interface PilgrimSaintInfo {
+  id: string;
+  name: string;
+  groupName: string;
+}
 
 export interface UserProfile {
   id: string;
@@ -9,7 +17,13 @@ export interface UserProfile {
   district: string;
   parish: string;
   role: AffiliationRole;
-  groupNumber?: number; // 무작위 배정된 순례 소그룹 번호
+  groupNumber?: number; // 무작위 배정된 순례 소그룹 번호 (하위 호환)
+  pilgrimSaint?: PilgrimSaintInfo; // PRD §2.3 성인 기반 순례 그룹 정보
+  saintGroup?: string; // 간편 접근용 그룹명 ("김대건 안드레아 그룹")
+  email?: string;
+  avatarUrl?: string;
+  termsAgreed?: boolean;
+  provider?: string;
 }
 
 export interface ParishNotice {
@@ -23,13 +37,14 @@ export interface ParishNotice {
 interface UserContextType {
   user: UserProfile | null;
   setUserProfile: (profile: UserProfile) => void;
+  logout: () => Promise<void>;
   stamps: string[]; // 획득한 공식 booth id 목록
   addStamp: (boothId: string) => boolean;
   hasRewardCoupon: boolean;
   claimReward: () => void;
   treasures: string[]; // 획득한 쭈양이 보물 ID 목록
   addTreasure: (treasureId: string) => boolean;
-  isRewardEligible: boolean; // 초등부, 중고등부, 청년, 교리교사만 수령 가능
+  isRewardEligible: boolean; // PRD §5.1 리워드 수령 가능 그룹 여부
   isLeader: boolean; // 교리교사, 사제, 수도자 등 인솔 권한
   parishNotices: Record<string, ParishNotice>;
   updateParishNotice: (parish: string, content: string) => void;
@@ -112,11 +127,75 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         console.error(e);
       }
     }
+
+    // Supabase Auth 세션 및 유저 동기화
+    try {
+      const supabase = createClient();
+      supabase.auth.getUser().then(({ data: { user: authUser } }) => {
+        if (authUser) {
+          const meta = authUser.user_metadata || {};
+          const saintGroupName =
+            meta.pilgrim_saint_group || meta.saintGroup || "김대건 안드레아 그룹";
+
+          setUser((prev) => {
+            const updated: UserProfile = {
+              id: authUser.id,
+              name:
+                meta.full_name ||
+                meta.name ||
+                authUser.email?.split("@")[0] ||
+                prev?.name ||
+                "순례 청년",
+              district: meta.district || prev?.district || "하단",
+              parish: meta.parish || prev?.parish || "하단",
+              role: (meta.affiliation_role || prev?.role || "청년") as AffiliationRole,
+              groupNumber: prev?.groupNumber || 1,
+              pilgrimSaint: {
+                id: meta.pilgrim_saint_id || prev?.pilgrimSaint?.id || "andrew-kim-taegon",
+                name: meta.pilgrim_saint_name || prev?.pilgrimSaint?.name || "성 김대건 안드레아",
+                groupName: saintGroupName,
+              },
+              saintGroup: saintGroupName,
+              email: authUser.email,
+              avatarUrl: meta.avatar_url || meta.picture,
+              termsAgreed: meta.terms_agreed ?? prev?.termsAgreed ?? false,
+              provider: authUser.app_metadata?.provider || "kakao",
+            };
+            localStorage.setItem("byd2026_user", JSON.stringify(updated));
+            return updated;
+          });
+        }
+      });
+
+      const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+        if (event === "SIGNED_OUT") {
+          setUser(null);
+          localStorage.removeItem("byd2026_user");
+        }
+      });
+
+      return () => {
+        authListener.subscription.unsubscribe();
+      };
+    } catch (e) {
+      // Supabase 클라이언트 초기화 실패 시 로컬스토리지 모드로 무중단 지속
+      console.warn("[UserContext] Supabase Auth session sync skipped:", e);
+    }
   }, []);
 
   const setUserProfile = (profile: UserProfile) => {
     setUser(profile);
     localStorage.setItem("byd2026_user", JSON.stringify(profile));
+  };
+
+  const logout = async () => {
+    try {
+      await kakaoSignOut();
+    } catch (e) {
+      console.warn("[UserContext] Logout error:", e);
+    }
+    setUser(null);
+    localStorage.removeItem("byd2026_user");
   };
 
   const addStamp = (boothId: string) => {
@@ -175,6 +254,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       value={{
         user,
         setUserProfile,
+        logout,
         stamps,
         addStamp,
         hasRewardCoupon,
