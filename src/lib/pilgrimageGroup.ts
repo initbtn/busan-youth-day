@@ -29,7 +29,7 @@ function stringToHash(str: string): number {
  * @param seed 고정 식별자 (userId 등). 제공 시 멱등 배정, 미제공 시 무작위 배정.
  * @param maxGroups 배정 가능한 최대 조 번호 (기본 50조)
  */
-export function assignPilgrimageGroup(seed?: string, maxGroups: number = 50): PilgrimageGroupResult {
+export function assignPilgrimageGroup(seed?: string, maxGroups: number = 20): PilgrimageGroupResult {
   const saints = PILGRIM_SAINTS;
 
   let saintIndex: number;

@@ -3,7 +3,8 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import { DISTRICT_PARISH_MAP, AFFILIATION_ROLES, AffiliationRole } from "@/data/parishes";
-import { getRandomPilgrimSaint, PilgrimSaint } from "@/data/saints";
+import { getRandomPilgrimSaint, getPilgrimSaintById, PilgrimSaint } from "@/data/saints";
+import { assignPilgrimageGroup } from "@/lib/pilgrimageGroup";
 import { useUser, UserProfile } from "@/context/UserContext";
 import { signInWithKakao, syncOnboardingMetadata } from "@/lib/auth/kakao";
 import { createClient } from "@/lib/supabase/client";
@@ -40,6 +41,9 @@ export function OnboardingModal({ isOpen, onClose }: OnboardingModalProps) {
 
   // 성인 순례 그룹 무작위 배정 상태 (PRD §2.3)
   const [isAllocating, setIsAllocating] = useState(false);
+  const [allocatedPilgrimageGroup, setAllocatedPilgrimageGroup] = useState<string>(
+    user?.pilgrimageGroup || ""
+  );
   const [allocatedSaint, setAllocatedSaint] = useState<PilgrimSaint | null>(
     user?.pilgrimSaint
       ? {
@@ -71,21 +75,22 @@ export function OnboardingModal({ isOpen, onClose }: OnboardingModalProps) {
   const handleStartAllocation = async () => {
     setIsAllocating(true);
 
-    // 무작위 성인(Saint) 기반 순례 공동체 배정
+    // 무작위 성인(Saint) 기반 순례 공동체 배정 (엔진 연동)
     setTimeout(async () => {
-      const saint = getRandomPilgrimSaint();
+      const allocation = assignPilgrimageGroup(user?.id || name || undefined, 20);
+      const saint = getPilgrimSaintById(allocation.saintId) || getRandomPilgrimSaint();
       setAllocatedSaint(saint);
+      setAllocatedPilgrimageGroup(allocation.pilgrimageGroup);
       setIsAllocating(false);
       setStep(4);
 
-      const randomGroupNum = Math.floor(Math.random() * 20) + 1;
       const updatedProfile: UserProfile = {
         id: user?.id || "user-" + Date.now(),
         name: name || user?.name || "순례 청년",
         district: selectedDistrict,
         parish: selectedParish,
         role: selectedRole,
-        groupNumber: randomGroupNum,
+        groupNumber: allocation.groupNumber,
         pilgrimSaint: {
           id: saint.id,
           name: saint.name,
@@ -93,7 +98,7 @@ export function OnboardingModal({ isOpen, onClose }: OnboardingModalProps) {
         },
         saintGroup: saint.groupName,
         saintName: saint.name,
-        pilgrimageGroup: `${saint.name} ${randomGroupNum}조`,
+        pilgrimageGroup: allocation.pilgrimageGroup,
         email: user?.email,
         avatarUrl: user?.avatarUrl,
         termsAgreed: agreePrivacy && agreeCharacterAsset,
@@ -428,12 +433,17 @@ export function OnboardingModal({ isOpen, onClose }: OnboardingModalProps) {
                   {allocatedSaint?.feastDay || "축일"}
                 </span>
               </div>
-              <p className="text-xl font-black text-orange-950 mt-1.5">
-                {allocatedSaint?.groupName || "김대건 안드레아 그룹"}
+              <p className="text-xl font-black text-orange-950 mt-1.5 tracking-tight">
+                {allocatedPilgrimageGroup || (allocatedSaint ? `${allocatedSaint.name} 1조` : "성 김대건 안드레아 1조")}
               </p>
-              <p className="text-[11px] text-orange-800/90 mt-1 font-medium">
-                {allocatedSaint?.title}
-              </p>
+              <div className="flex items-center space-x-1.5 mt-1">
+                <span className="text-[10px] font-bold text-orange-700 bg-orange-100/90 px-1.5 py-0.5 rounded">
+                  {allocatedSaint?.groupName || "김대건 안드레아 그룹"}
+                </span>
+                <span className="text-[11px] text-orange-800/90 font-medium">
+                  {allocatedSaint?.title}
+                </span>
+              </div>
               {allocatedSaint?.motto && (
                 <p className="text-[10px] italic text-slate-600 mt-2 bg-white/70 p-2 rounded-xl border border-orange-100">
                   &ldquo;{allocatedSaint.motto}&rdquo;

@@ -177,6 +177,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
                   groupName: saintGroupName,
                 },
                 saintGroup: saintGroupName,
+                saintName: saintName,
+                pilgrimageGroup:
+                  meta.pilgrimage_group ||
+                  prev?.pilgrimageGroup ||
+                  `${saintName} ${prev?.groupNumber || 1}조`,
                 email: authUser.email,
                 avatarUrl: meta.avatar_url || meta.picture,
                 termsAgreed: true,
