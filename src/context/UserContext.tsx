@@ -21,6 +21,8 @@ export interface UserProfile {
   groupNumber?: number; // 무작위 배정된 순례 소그룹 번호 (하위 호환)
   pilgrimSaint?: PilgrimSaintInfo; // PRD §2.3 성인 기반 순례 그룹 정보
   saintGroup?: string; // 간편 접근용 그룹명 ("김대건 안드레아 그룹")
+  saintName?: string; // 간편 접근용 성인 이름 ("성 김대건 안드레아")
+  pilgrimageGroup?: string; // 통합 순례단 명칭 ("성 김대건 안드레아 3조")
   email?: string;
   avatarUrl?: string;
   termsAgreed?: boolean;

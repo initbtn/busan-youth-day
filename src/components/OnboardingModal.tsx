@@ -78,19 +78,22 @@ export function OnboardingModal({ isOpen, onClose }: OnboardingModalProps) {
       setIsAllocating(false);
       setStep(4);
 
+      const randomGroupNum = Math.floor(Math.random() * 20) + 1;
       const updatedProfile: UserProfile = {
         id: user?.id || "user-" + Date.now(),
         name: name || user?.name || "순례 청년",
         district: selectedDistrict,
         parish: selectedParish,
         role: selectedRole,
-        groupNumber: 1,
+        groupNumber: randomGroupNum,
         pilgrimSaint: {
           id: saint.id,
           name: saint.name,
           groupName: saint.groupName,
         },
         saintGroup: saint.groupName,
+        saintName: saint.name,
+        pilgrimageGroup: `${saint.name} ${randomGroupNum}조`,
         email: user?.email,
         avatarUrl: user?.avatarUrl,
         termsAgreed: agreePrivacy && agreeCharacterAsset,
