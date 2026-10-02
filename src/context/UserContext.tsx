@@ -41,6 +41,7 @@ export interface ParishNotice {
 
 interface UserContextType {
   user: UserProfile | null;
+  isLoading: boolean;
   setUserProfile: (profile: UserProfile) => void;
   logout: () => Promise<void>;
   stamps: string[]; // 획득한 공식 booth id 목록
@@ -76,6 +77,7 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [stamps, setStamps] = useState<string[]>([]);
   const [treasures, setTreasures] = useState<string[]>([]);
   const [hasRewardCoupon, setHasRewardCoupon] = useState<boolean>(false);
@@ -95,6 +97,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     user?.role === "교리교사";
 
   useEffect(() => {
+    let localUserCompleted = false;
     const savedUser = localStorage.getItem("byd2026_user");
     const savedStamps = localStorage.getItem("byd2026_stamps");
     const savedTreasures = localStorage.getItem("byd2026_treasures");
@@ -103,7 +106,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
     if (savedUser) {
       try {
-        setUser(JSON.parse(savedUser));
+        const parsed = JSON.parse(savedUser);
+        setUser(parsed);
+        if (parsed?.onboardingCompleted && parsed?.termsAgreed && parsed?.parish) {
+          localUserCompleted = true;
+        }
       } catch (e) {
         console.error(e);
       }
@@ -137,87 +144,94 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     try {
       const supabase = createClient();
       supabase.auth.getUser().then(({ data: { user: authUser } }) => {
-        if (authUser) {
-          const meta = authUser.user_metadata || {};
-          const hasCompleted = !!(
-            meta.onboarding_completed_at &&
-            meta.terms_agreed &&
-            meta.parish
-          );
+        try {
+          if (authUser) {
+            const meta = authUser.user_metadata || {};
+            const hasCompleted = !!(
+              (meta.onboarding_completed_at || localUserCompleted) &&
+              (meta.terms_agreed || localUserCompleted) &&
+              (meta.parish || (savedUser && JSON.parse(savedUser)?.parish))
+            );
 
-          if (hasCompleted) {
-            const saintObj = meta.pilgrim_saint_id
-              ? getPilgrimSaintById(meta.pilgrim_saint_id)
-              : undefined;
-            const saintGroupName =
-              meta.pilgrim_saint_group ||
-              meta.saintGroup ||
-              saintObj?.groupName ||
-              "김대건 안드레아 그룹";
-            const saintName =
-              meta.pilgrim_saint_name ||
-              saintObj?.name ||
-              "성 김대건 안드레아";
+            if (hasCompleted) {
+              const saintObj = meta.pilgrim_saint_id
+                ? getPilgrimSaintById(meta.pilgrim_saint_id)
+                : undefined;
+              const saintGroupName =
+                meta.pilgrim_saint_group ||
+                meta.saintGroup ||
+                saintObj?.groupName ||
+                "김대건 안드레아 모둠";
+              const saintName =
+                meta.pilgrim_saint_name ||
+                saintObj?.name ||
+                "성 김대건 안드레아";
 
-            setUser((prev) => {
-              const updated: UserProfile = {
-                id: authUser.id,
-                name:
-                  meta.full_name ||
-                  meta.name ||
-                  authUser.email?.split("@")[0] ||
-                  prev?.name ||
-                  "순례 청년",
-                district: meta.district || prev?.district || "하단지구",
-                parish: meta.parish || prev?.parish || "하단",
-                role: (meta.affiliation_role || prev?.role || "청년") as AffiliationRole,
-                groupNumber: prev?.groupNumber || 1,
-                pilgrimSaint: {
-                  id: meta.pilgrim_saint_id || prev?.pilgrimSaint?.id || "andrew-kim-taegon",
-                  name: saintName,
-                  groupName: saintGroupName,
-                },
-                saintGroup: saintGroupName,
-                saintName: saintName,
-                pilgrimageGroup:
-                  meta.pilgrimage_group ||
-                  prev?.pilgrimageGroup ||
-                  `${saintName} ${prev?.groupNumber || 1}조`,
-                email: authUser.email,
-                avatarUrl: meta.avatar_url || meta.picture,
-                baptismalName: meta.baptismal_name || meta.baptismalName || prev?.baptismalName,
-                termsAgreed: true,
-                onboardingCompleted: true,
-                provider: authUser.app_metadata?.provider || "kakao",
-              };
-              localStorage.setItem("byd2026_user", JSON.stringify(updated));
-              return updated;
-            });
-          } else {
-            // 카카오 SSO 직후이거나 온보딩 미완료 유저
-            setUser((prev) => {
-              const incomplete: UserProfile = {
-                id: authUser.id,
-                name:
-                  meta.full_name ||
-                  meta.name ||
-                  authUser.email?.split("@")[0] ||
-                  prev?.name ||
-                  "순례자",
-                district: prev?.district || "",
-                parish: prev?.parish || "",
-                role: (prev?.role || "청년") as AffiliationRole,
-                email: authUser.email,
-                avatarUrl: meta.avatar_url || meta.picture,
-                termsAgreed: false,
-                onboardingCompleted: false,
-                provider: authUser.app_metadata?.provider || "kakao",
-              };
-              localStorage.setItem("byd2026_user", JSON.stringify(incomplete));
-              return incomplete;
-            });
+              setUser((prev) => {
+                const updated: UserProfile = {
+                  id: authUser.id,
+                  name:
+                    meta.full_name ||
+                    meta.name ||
+                    authUser.email?.split("@")[0] ||
+                    prev?.name ||
+                    "순례 청년",
+                  district: meta.district || prev?.district || "하단지구",
+                  parish: meta.parish || prev?.parish || "하단",
+                  role: (meta.affiliation_role || prev?.role || "청년") as AffiliationRole,
+                  groupNumber: 1,
+                  pilgrimSaint: {
+                    id: meta.pilgrim_saint_id || prev?.pilgrimSaint?.id || "andrew-kim-taegon",
+                    name: saintName,
+                    groupName: saintGroupName,
+                  },
+                  saintGroup: saintGroupName,
+                  saintName: saintName,
+                  pilgrimageGroup: saintGroupName,
+                  email: authUser.email,
+                  avatarUrl: meta.avatar_url || meta.picture,
+                  baptismalName: meta.baptismal_name || meta.baptismalName || prev?.baptismalName,
+                  termsAgreed: true,
+                  onboardingCompleted: true,
+                  provider: authUser.app_metadata?.provider || "kakao",
+                };
+                localStorage.setItem("byd2026_user", JSON.stringify(updated));
+                return updated;
+              });
+            } else {
+              // 카카오 SSO 직후이거나 온보딩 미완료 유저
+              setUser((prev) => {
+                // 이미 로컬스토리지에 완료된 유저가 있다면 덮어쓰지 않음
+                if (prev?.onboardingCompleted && prev?.parish) {
+                  return prev;
+                }
+                const incomplete: UserProfile = {
+                  id: authUser.id,
+                  name:
+                    meta.full_name ||
+                    meta.name ||
+                    authUser.email?.split("@")[0] ||
+                    prev?.name ||
+                    "순례자",
+                  district: prev?.district || "",
+                  parish: prev?.parish || "",
+                  role: (prev?.role || "청년") as AffiliationRole,
+                  email: authUser.email,
+                  avatarUrl: meta.avatar_url || meta.picture,
+                  termsAgreed: false,
+                  onboardingCompleted: false,
+                  provider: authUser.app_metadata?.provider || "kakao",
+                };
+                localStorage.setItem("byd2026_user", JSON.stringify(incomplete));
+                return incomplete;
+              });
+            }
           }
+        } finally {
+          setIsLoading(false);
         }
+      }).catch(() => {
+        setIsLoading(false);
       });
 
       const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
@@ -233,6 +247,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       // Supabase 클라이언트 초기화 실패 시 로컬스토리지 모드로 무중단 지속
       console.warn("[UserContext] Supabase Auth session sync skipped:", e);
+      setIsLoading(false);
     }
   }, []);
 
@@ -306,6 +321,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     <UserContext.Provider
       value={{
         user,
+        isLoading,
         setUserProfile,
         logout,
         stamps,

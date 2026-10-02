@@ -12,7 +12,7 @@ export const PILGRIM_SAINTS: PilgrimSaint[] = [
   {
     id: "john-paul-ii",
     name: "성 요한 바오로 2세",
-    groupName: "요한 바오로 2세 그룹",
+    groupName: "요한 바오로 2세 모둠",
     title: "교황 · 세계청년대회(WYD) 창설자",
     feastDay: "10월 22일",
     patronage: "세계 가톨릭 젊은이들의 주보",
@@ -21,7 +21,7 @@ export const PILGRIM_SAINTS: PilgrimSaint[] = [
   {
     id: "andrew-kim-taegon",
     name: "성 김대건 안드레아",
-    groupName: "김대건 안드레아 그룹",
+    groupName: "김대건 안드레아 모둠",
     title: "한국 최초의 사제이자 순교자",
     feastDay: "7월 5일 (대축일 9월 20일)",
     patronage: "한국 성직자들의 주보",
@@ -30,7 +30,7 @@ export const PILGRIM_SAINTS: PilgrimSaint[] = [
   {
     id: "francesca-cabrini",
     name: "성 프란체스카 카브리니",
-    groupName: "프란체스카 카브리니 그룹",
+    groupName: "프란체스카 카브리니 모둠",
     title: "수녀 · 이민자들의 어머니",
     feastDay: "11월 13일",
     patronage: "이민자와 난민들의 주보",
@@ -39,7 +39,7 @@ export const PILGRIM_SAINTS: PilgrimSaint[] = [
   {
     id: "josephine-bakhita",
     name: "성 요세피나 바키타",
-    groupName: "요세피나 바키타 그룹",
+    groupName: "요세피나 바키타 모둠",
     title: "수녀 · 용서와 희망의 증인",
     feastDay: "2월 8일",
     patronage: "인신매매 피해자 및 억압받는 이들의 주보",
@@ -48,7 +48,7 @@ export const PILGRIM_SAINTS: PilgrimSaint[] = [
   {
     id: "carlo-acutis",
     name: "성 카를로 아쿠티스",
-    groupName: "카를로 아쿠티스 그룹",
+    groupName: "카를로 아쿠티스 모둠",
     title: "평신도 · 디지털 인터넷의 주보",
     feastDay: "10월 12일",
     patronage: "청소년 및 컴퓨터 프로그래머의 주보",
