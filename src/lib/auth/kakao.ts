@@ -80,6 +80,7 @@ export async function syncOnboardingMetadata(
     role: string;
     saintGroup: string;
     saintId: string;
+    saintName?: string;
     termsAgreed: boolean;
   }
 ) {
@@ -92,6 +93,7 @@ export async function syncOnboardingMetadata(
       affiliation_role: metadata.role,
       pilgrim_saint_group: metadata.saintGroup,
       pilgrim_saint_id: metadata.saintId,
+      pilgrim_saint_name: metadata.saintName,
       terms_agreed: metadata.termsAgreed,
       onboarding_completed_at: new Date().toISOString(),
     },

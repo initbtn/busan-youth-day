@@ -34,10 +34,10 @@ export function MainAppContainer() {
   const [isMapGuideOpen, setIsMapGuideOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState<15 | 16 | 17>(15);
 
-  // 최초 방문 시(유저 미등록) 온보딩 모달 자동 오픈
+  // 최초 방문 또는 온보딩 미완료 시 온보딩 모달 자동 오픈
   useEffect(() => {
-    const savedUser = localStorage.getItem("byd2026_user");
-    if (!savedUser && !user) {
+    const isCompleted = user?.onboardingCompleted && user?.termsAgreed && !!user?.parish;
+    if (!isCompleted) {
       setIsOnboardingOpen(true);
     }
   }, [user]);

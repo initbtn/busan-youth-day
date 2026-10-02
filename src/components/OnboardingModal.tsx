@@ -16,7 +16,13 @@ interface OnboardingModalProps {
 
 export function OnboardingModal({ isOpen, onClose }: OnboardingModalProps) {
   const { user, setUserProfile } = useUser();
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const isKakaoSignedIn = !!(user && (user.email || user.provider === "kakao"));
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(() => {
+    if (user && (user.email || user.provider === "kakao") && !user.termsAgreed) {
+      return 2;
+    }
+    return 1;
+  });
 
   // 폼 입력 상태
   const [name, setName] = useState(user?.name || "");
@@ -88,6 +94,7 @@ export function OnboardingModal({ isOpen, onClose }: OnboardingModalProps) {
         email: user?.email,
         avatarUrl: user?.avatarUrl,
         termsAgreed: agreePrivacy && agreeCharacterAsset,
+        onboardingCompleted: true,
         provider: user?.provider || "kakao",
       };
 
@@ -103,6 +110,7 @@ export function OnboardingModal({ isOpen, onClose }: OnboardingModalProps) {
           role: selectedRole,
           saintGroup: saint.groupName,
           saintId: saint.id,
+          saintName: saint.name,
           termsAgreed: true,
         });
       } catch (err) {
@@ -149,29 +157,55 @@ export function OnboardingModal({ isOpen, onClose }: OnboardingModalProps) {
               </p>
             </div>
 
-            {/* 카카오 간편 로그인 버튼 */}
-            <div className="space-y-2 pt-1">
-              <button
-                type="button"
-                onClick={handleKakaoLogin}
-                disabled={isKakaoLoading}
-                className="w-full py-3 px-4 bg-[#FEE500] hover:bg-[#FDD835] text-[#000000] font-bold rounded-2xl text-xs flex items-center justify-center space-x-2 shadow-sm transition-all"
-              >
-                <svg
-                  className="w-4 h-4 fill-current"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
+            {/* 카카오 간편 로그인 버튼 또는 이미 연동된 계정 카드 */}
+            {isKakaoSignedIn ? (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl space-y-2">
+                <div className="flex items-center space-x-2">
+                  <div className="w-7 h-7 rounded-full bg-[#FEE500] flex items-center justify-center text-xs font-bold text-black flex-shrink-0">
+                    카톡
+                  </div>
+                  <div className="truncate">
+                    <p className="text-xs font-bold text-amber-950 truncate">
+                      카카오 계정 연동 완료
+                    </p>
+                    <p className="text-[10px] text-amber-800 truncate">
+                      {user?.name || "참가자"} {user?.email ? `(${user.email})` : ""}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setStep(2)}
+                  className="w-full py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl text-xs transition-colors shadow-xs flex items-center justify-center space-x-1"
                 >
-                  <path d="M12 3c-5.523 0-10 3.582-10 8 0 2.84 1.83 5.334 4.606 6.74-.2.748-.73 2.705-.837 3.123-.131.52.19.512.4.373.167-.11 2.65-1.8 3.73-2.54.67.098 1.36.148 2.06.148 5.523 0 10-3.582 10-8s-4.477-8-10-8z" />
-                </svg>
-                <span>
-                  {isKakaoLoading ? "카카오 인가 창으로 이동 중..." : "카카오로 3초 만에 시작하기"}
-                </span>
-              </button>
-              <p className="text-[10px] text-center text-slate-400">
-                프로필 닉네임과 계정(이메일)이 안전하게 연동됩니다.
-              </p>
-            </div>
+                  <span>약관 동의 단계로 계속하기</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleKakaoLogin}
+                  disabled={isKakaoLoading}
+                  className="w-full py-3 px-4 bg-[#FEE500] hover:bg-[#FDD835] text-[#000000] font-bold rounded-2xl text-xs flex items-center justify-center space-x-2 shadow-sm transition-all"
+                >
+                  <svg
+                    className="w-4 h-4 fill-current"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path d="M12 3c-5.523 0-10 3.582-10 8 0 2.84 1.83 5.334 4.606 6.74-.2.748-.73 2.705-.837 3.123-.131.52.19.512.4.373.167-.11 2.65-1.8 3.73-2.54.67.098 1.36.148 2.06.148 5.523 0 10-3.582 10-8s-4.477-8-10-8z" />
+                  </svg>
+                  <span>
+                    {isKakaoLoading ? "카카오 인가 창으로 이동 중..." : "카카오로 3초 만에 시작하기"}
+                  </span>
+                </button>
+                <p className="text-[10px] text-center text-slate-400">
+                  프로필 닉네임과 계정(이메일)이 안전하게 연동됩니다.
+                </p>
+              </div>
+            )}
 
             <div className="relative flex py-1 items-center">
               <div className="flex-grow border-t border-slate-200"></div>
@@ -295,7 +329,7 @@ export function OnboardingModal({ isOpen, onClose }: OnboardingModalProps) {
                 >
                   {DISTRICT_PARISH_MAP.map((d) => (
                     <option key={d.district} value={d.district}>
-                      {d.district}지구
+                      {d.district}
                     </option>
                   ))}
                 </select>

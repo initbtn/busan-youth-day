@@ -24,10 +24,10 @@ function TabsLayoutContent({
   const pathname = usePathname();
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
 
-  // 최초 방문 시 온보딩 모달 오픈
+  // 최초 방문 또는 온보딩 미완료(카카오 로그인 직후 등) 시 온보딩 모달 자동 오픈
   useEffect(() => {
-    const savedUser = localStorage.getItem("byd2026_user");
-    if (!savedUser && !user) {
+    const isCompleted = user?.onboardingCompleted && user?.termsAgreed && !!user?.parish;
+    if (!isCompleted) {
       setIsOnboardingOpen(true);
     }
   }, [user]);
