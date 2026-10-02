@@ -27,7 +27,6 @@ export async function signInWithKakao(
     provider: "kakao",
     options: {
       redirectTo,
-      scopes: "profile_nickname profile_image account_email",
     },
   });
 
