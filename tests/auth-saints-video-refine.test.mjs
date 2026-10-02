@@ -51,6 +51,13 @@ describe("인증 필수화, WYD 5인 성인 배정, 율동영상 및 명칭 정�
       stampContent.includes("로그인") && (stampContent.includes("카카오") || stampContent.includes("isLoggedIn") || stampContent.includes("user")),
       "StampBookView에 비로그인 스탬프/보물찾기 제한 및 로그인 안내 처리가 있어야 함"
     );
+
+    const treasurePath = path.join(projectRoot, "src/components/TreasureHuntView.tsx");
+    const treasureContent = fs.readFileSync(treasurePath, "utf-8");
+    assert.ok(
+      treasureContent.includes("isKakaoSignedIn") && treasureContent.includes("보물찾기 참여는 카카오 로그인이 필요합니다"),
+      "TreasureHuntView에 비로그인 보물찾기 제한 및 카카오 로그인 안내가 있어야 함"
+    );
   });
 
   it("DoD 3: 2027 서울 WYD 5인 수호성인 풀 및 순례 그룹 배정 범위 검증", () => {
@@ -63,6 +70,12 @@ describe("인증 필수화, WYD 5인 성인 배정, 율동영상 및 명칭 정�
     assert.ok(saintsContent.includes("carlo-acutis"), "성 카를로 아쿠티스 포함");
     assert.ok(saintsContent.includes("francesca-cabrini"), "성 프란체스카 카브리니 포함");
     assert.ok(saintsContent.includes("josephine-bakhita"), "성 요세피나 바키타 포함");
+
+    // PILGRIM_SAINTS 배열에 정확히 5인만 배정되어 있는지 검증
+    const pilgrimMatch = saintsContent.match(/export const PILGRIM_SAINTS: readonly Saint\[\] = \[([\s\S]*?)\];/);
+    assert.ok(pilgrimMatch, "PILGRIM_SAINTS 배열 정의가 존재해야 함");
+    const saintIds = [...pilgrimMatch[1].matchAll(/id:\s*"([^"]+)"/g)].map(m => m[1]);
+    assert.strictEqual(saintIds.length, 5, "PILGRIM_SAINTS는 정확히 5인 수호성인이어야 함");
 
     // 배정 엔진 파일 검사
     const groupPath = path.join(projectRoot, "src/lib/pilgrimageGroup.ts");
