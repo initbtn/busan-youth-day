@@ -34,10 +34,10 @@ export function MainAppContainer() {
   const [isMapGuideOpen, setIsMapGuideOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState<15 | 16 | 17>(15);
 
-  // 최초 방문 시(유저 미등록) 온보딩 모달 자동 오픈
+  // 최초 방문 또는 온보딩 미완료 시 온보딩 모달 자동 오픈
   useEffect(() => {
-    const savedUser = localStorage.getItem("byd2026_user");
-    if (!savedUser && !user) {
+    const isCompleted = user?.onboardingCompleted && user?.termsAgreed && !!user?.parish;
+    if (!isCompleted) {
       setIsOnboardingOpen(true);
     }
   }, [user]);
@@ -107,8 +107,8 @@ export function MainAppContainer() {
             className="flex items-center space-x-1.5 px-3 py-1.5 bg-orange-50 text-orange-700 rounded-full text-xs font-semibold hover:bg-orange-100 transition-colors border border-orange-100"
           >
             <span>{user.name}</span>
-            <span className="text-[10px] bg-orange-600 text-white px-1.5 py-0.5 rounded-full font-bold">
-              {user.groupNumber ? `${user.groupNumber}조` : user.parish}
+            <span className="text-[10px] bg-orange-600 text-white px-1.5 py-0.5 rounded-full font-bold max-w-[120px] truncate">
+              {user.saintGroup || (user.groupNumber ? `${user.groupNumber}조` : user.parish)}
             </span>
           </button>
         ) : (
