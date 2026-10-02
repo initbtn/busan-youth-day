@@ -371,3 +371,35 @@ export function mergeCommunityPosts(
   return all;
 }
 
+export interface PostComment {
+  id: string;
+  postId: string;
+  author: string;
+  parish: string;
+  role: string;
+  content: string;
+  createdAt: string;
+}
+
+export const POST_COMMENTS_STORAGE_KEY = "byd2026_post_comments";
+
+export function loadCachedComments(): Record<string, PostComment[]> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(POST_COMMENTS_STORAGE_KEY);
+    if (!raw) return {};
+    return JSON.parse(raw);
+  } catch (err) {
+    console.warn("Failed to load cached comments:", err);
+    return {};
+  }
+}
+
+export function cacheComments(comments: Record<string, PostComment[]>): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(POST_COMMENTS_STORAGE_KEY, JSON.stringify(comments));
+  } catch (err) {
+    console.warn("Failed to cache comments:", err);
+  }
+}

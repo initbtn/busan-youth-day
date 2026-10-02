@@ -15,6 +15,8 @@ import {
   Share2,
   Clock,
   Flame,
+  Plus,
+  Layers,
 } from "lucide-react";
 import { useUser } from "@/context/UserContext";
 import { createClient } from "@/lib/supabase/client";
@@ -32,6 +34,10 @@ import {
   sortCommunityPosts,
   togglePostLike,
   getPostMediaUrls,
+  PostComment,
+  loadCachedComments,
+  cacheComments,
+  formatTimeAgo,
 } from "@/lib/communityPosts";
 import { optimizeImage, isSupportedMediaType, isVideoFile } from "@/lib/imageOptimizer";
 import { isVideoUrl, compressVideoIfNeeded } from "@/lib/videoCompressor";
@@ -42,7 +48,13 @@ export function CommunityFeedView() {
   const { user } = useUser();
   const isKakaoSignedIn = !!(user && (user.email || user.provider === "kakao"));
   const [posts, setPosts] = useState<CommunityPost[]>(INITIAL_POSTS);
+  const [commentsMap, setCommentsMap] = useState<Record<string, PostComment[]>>({});
+  const [activeCommentPostId, setActiveCommentPostId] = useState<string | null>(null);
+  const [commentInputTexts, setCommentInputTexts] = useState<Record<string, string>>({});
   const [sortOrder, setSortOrder] = useState<FeedSortOrder>("latest");
+
+  // 업로드 모달 상태 (DoD 4)
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [newContent, setNewContent] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
@@ -57,11 +69,16 @@ export function CommunityFeedView() {
   const [viewerIndex, setViewerIndex] = useState(0);
   const [viewerAuthor, setViewerAuthor] = useState<string | undefined>(undefined);
 
-  // 1. 컴포넌트 마운트 시: LocalStorage 오프라인 캐시 즉시 복원 + Supabase 원격 피드 동기화
+  // 1. 컴포넌트 마운트 시: LocalStorage 오프라인 캐시(게시글 & 댓글) 즉시 복원 + Supabase 원격 피드 동기화
   useEffect(() => {
-    const cached = loadCachedPosts();
-    if (cached.length > 0) {
-      setPosts(mergeCommunityPosts([], cached, INITIAL_POSTS));
+    const cachedPosts = loadCachedPosts();
+    if (cachedPosts.length > 0) {
+      setPosts(mergeCommunityPosts([], cachedPosts, INITIAL_POSTS));
+    }
+
+    const cachedComments = loadCachedComments();
+    if (cachedComments && Object.keys(cachedComments).length > 0) {
+      setCommentsMap(cachedComments);
     }
 
     const syncWithSupabase = async () => {
@@ -82,6 +99,30 @@ export function CommunityFeedView() {
 
     syncWithSupabase();
   }, []);
+
+  // 모달 오픈 시 배경 스크롤 락 (DoD 5)
+  useEffect(() => {
+    if (isUploadModalOpen || reportingPost || viewerOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isUploadModalOpen, reportingPost, viewerOpen]);
+
+  // 신고 모달 / 업로드 모달 ESC 키 닫기
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (reportingPost) setReportingPost(null);
+        if (isUploadModalOpen && !isPosting) setIsUploadModalOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [reportingPost, isUploadModalOpen, isPosting]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -109,6 +150,37 @@ export function CommunityFeedView() {
     });
   };
 
+  const handleCommentSubmit = (postId: string, e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const text = (commentInputTexts[postId] || "").trim();
+    if (!text) return;
+
+    const newComment: PostComment = {
+      id: `comment-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      postId,
+      author: user?.name || "참가 청년",
+      parish: user?.parish || "부산",
+      role: user?.role || "청년",
+      content: text,
+      createdAt: new Date().toISOString(),
+    };
+
+    setCommentsMap((prev) => {
+      const list = prev[postId] || [];
+      const updated = {
+        ...prev,
+        [postId]: [...list, newComment],
+      };
+      cacheComments(updated);
+      return updated;
+    });
+
+    setCommentInputTexts((prev) => ({
+      ...prev,
+      [postId]: "",
+    }));
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawFiles = Array.from(e.target.files || []);
     if (rawFiles.length === 0) return;
@@ -127,13 +199,11 @@ export function CommunityFeedView() {
         continue;
       }
 
-      // 비디오 크기 검증 (최대 50MB)
       if (isVideoFile(file) && file.size > 50 * 1024 * 1024) {
         alert(`${file.name}: 동영상 크기는 최대 50MB 이하여야 합니다.`);
         continue;
       }
 
-      // 이미지 크기 검증 (최대 15MB)
       if (!isVideoFile(file) && file.size > 15 * 1024 * 1024) {
         alert(`${file.name}: 사진 크기는 15MB 이하여야 합니다.`);
         continue;
@@ -145,7 +215,6 @@ export function CommunityFeedView() {
           newOptimizedFiles.push(validated as File);
           newPreviews.push(URL.createObjectURL(validated));
         } else {
-          // 클라이언트 이미지 리사이즈 및 압축 최적화 (DoD 3)
           const optimized = await optimizeImage(file, { maxDimension: 1920, quality: 0.85 });
           newOptimizedFiles.push(optimized as File);
           newPreviews.push(URL.createObjectURL(optimized));
@@ -160,7 +229,6 @@ export function CommunityFeedView() {
     setSelectedFiles((prev) => [...prev, ...newOptimizedFiles]);
     setPreviewUrls((prev) => [...prev, ...newPreviews]);
 
-    // file input 초기화하여 동일 파일 재선택 허용
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -211,16 +279,6 @@ export function CommunityFeedView() {
     }
   };
 
-  // 신고 모달 오픈 시 ESC 키 닫기 이벤트 연동 (접근성 보완)
-  useEffect(() => {
-    if (!reportingPost) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setReportingPost(null);
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [reportingPost]);
-
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isKakaoSignedIn) {
@@ -267,13 +325,12 @@ export function CommunityFeedView() {
         console.error("Media upload failed:", err);
         alert("사진/동영상 업로드 중 오류가 발생했습니다. 네트워크 상태를 확인 후 다시 시도해 주세요.");
         setIsPosting(false);
-        return; // 실패 시 임시 주소(blob:)로 글을 올리지 않고 즉시 중단 (깨진 미디어 방어)
+        return;
       }
     }
 
-    // 새 게시글 객체 생성 (UUID, 시간, 멀티 미디어 포함)
     const newPost = createPostPayload({
-      author: user?.name || "익명의 순례자",
+      author: user?.name || "참가 청년",
       parish: user?.parish || "하단",
       role: user?.role || "청년",
       content: newContent,
@@ -282,7 +339,6 @@ export function CommunityFeedView() {
       userId: user?.id,
     });
 
-    // 낙관적 UI 업데이트 및 LocalStorage 영구 보존
     const nextPosts = [newPost, ...posts];
     setPosts(nextPosts);
     cachePosts(nextPosts);
@@ -292,8 +348,8 @@ export function CommunityFeedView() {
     setSelectedFiles([]);
     setPreviewUrls([]);
     setIsPosting(false);
+    setIsUploadModalOpen(false);
 
-    // Supabase posts 테이블에 비동기 영구 저장 (백그라운드 동기화)
     try {
       const supabase = createClient();
       await syncPostToSupabase(supabase, newPost);
@@ -303,8 +359,8 @@ export function CommunityFeedView() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* 상단 해시태그 & 배너 */}
+    <div className="space-y-5 pb-16">
+      {/* 상단 해시태그 & 배너 + 새 게시물 작성 버튼 */}
       <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white rounded-3xl p-5 shadow-sm">
         <div className="flex items-center justify-between">
           <div>
@@ -316,7 +372,7 @@ export function CommunityFeedView() {
             </div>
             <h2 className="text-xl font-black mt-1">#2026BYD</h2>
             <p className="text-xs text-blue-100/90 mt-0.5">
-              순례 여정의 순간을 인스타그램 스타일 피드로 함께 나눠요.
+              청년의 날 은혜로운 여정을 인스타그램 피드로 함께 나눠요.
             </p>
           </div>
           <div className="flex items-center space-x-2">
@@ -332,135 +388,31 @@ export function CommunityFeedView() {
             <div className="text-3xl">📸</div>
           </div>
         </div>
-      </div>
 
-      {/* 새 방명록 / 게시글 작성 폼 또는 로그인 안내 카드 */}
-      {!isKakaoSignedIn ? (
-        <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm text-center space-y-3">
-          <div className="w-10 h-10 mx-auto rounded-full bg-[#FEE500]/20 flex items-center justify-center text-lg">
-            ✍️
-          </div>
-          <div>
-            <h3 className="text-xs font-bold text-slate-900">소통피드 글쓰기는 카카오 로그인이 필요합니다</h3>
-            <p className="text-[11px] text-slate-500 mt-0.5">
-              순례 청년들의 은혜로운 사진과 응원 글을 함께 나누려면 먼저 로그인해 주세요.
-            </p>
-          </div>
+        {/* 상단 액션: 글쓰기 모달 트리거 버튼 */}
+        <div className="mt-4 pt-3 border-t border-white/15 flex items-center justify-between">
+          <span className="text-xs text-blue-100">
+            {isKakaoSignedIn ? `${user?.name || "참가자"}님, 지금 축제 순간을 기록해보세요!` : "로그인하고 축제 인증샷을 남겨보세요!"}
+          </span>
           <button
             type="button"
-            onClick={() => signInWithKakao()}
-            className="w-full py-2.5 px-4 bg-[#FEE500] hover:bg-[#FDD835] text-black font-bold rounded-xl text-xs flex items-center justify-center space-x-2 shadow-xs transition-all active:scale-[0.99]"
+            onClick={() => {
+              if (!isKakaoSignedIn) {
+                alert("소통피드 글쓰기는 카카오 로그인이 필요합니다.");
+                signInWithKakao();
+                return;
+              }
+              setIsUploadModalOpen(true);
+            }}
+            className="flex items-center space-x-1.5 bg-white text-blue-700 hover:bg-blue-50 active:scale-95 px-3.5 py-1.5 rounded-full text-xs font-bold shadow-xs transition-all"
           >
-            <span>카카오로 간편 로그인하기</span>
+            <Plus className="w-4 h-4" />
+            <span>새 게시물 작성</span>
           </button>
         </div>
-      ) : (
-        <form
-          onSubmit={handleCreatePost}
-          className="bg-white rounded-3xl p-4 border border-slate-100 shadow-sm space-y-3"
-        >
-          <div className="flex items-center space-x-2 text-xs font-bold text-slate-700">
-            <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
-              {user?.name?.[0] || "P"}
-            </span>
-            <span>
-              {user?.name || "순례자"} ({user?.parish || "부산"}성당 / {user?.role || "청년"})
-            </span>
-          </div>
+      </div>
 
-          <textarea
-            rows={2}
-            placeholder="청년의 날 은혜로운 순간이나 응원 한마디를 남겨보세요..."
-            value={newContent}
-            onChange={(e) => setNewContent(e.target.value)}
-            className="w-full text-xs p-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-          />
-
-          {/* 선택한 사진/영상 미리보기 그리드 */}
-          {previewUrls.length > 0 && (
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
-                <span>첨부된 미디어 ({previewUrls.length}/5)</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    previewUrls.forEach((url) => URL.revokeObjectURL(url));
-                    setSelectedFiles([]);
-                    setPreviewUrls([]);
-                  }}
-                  className="text-rose-500 hover:text-rose-600"
-                >
-                  전체 취소
-                </button>
-              </div>
-              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-                {previewUrls.map((url, idx) => {
-                  const file = selectedFiles[idx];
-                  const isVideo = file ? isVideoFile(file) : isVideoUrl(url);
-
-                  return (
-                    <div
-                      key={`${url}-${idx}`}
-                      className="relative aspect-square rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 group"
-                    >
-                      {isVideo ? (
-                        <video src={url} className="w-full h-full object-cover" muted />
-                      ) : (
-                        <img src={url} alt={`미리보기 ${idx + 1}`} className="w-full h-full object-cover" />
-                      )}
-                      {isVideo && (
-                        <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-black/70 text-white">
-                          VIDEO
-                        </span>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveFile(idx)}
-                        className="absolute top-1 right-1 p-1 bg-black/70 text-white rounded-full hover:bg-black/90 transition-colors shadow-sm"
-                        title="삭제"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          <div className="flex justify-between items-center pt-1">
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              multiple
-              accept="image/*,video/*"
-              data-testid="media-file-input"
-              className="hidden"
-            />
-
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center space-x-1.5 text-blue-600 hover:text-blue-700 text-xs font-bold bg-blue-50 px-3 py-1.5 rounded-xl transition-colors"
-            >
-              <Camera className="w-4 h-4" />
-              <span>사진·영상 첨부 {selectedFiles.length > 0 ? `(${selectedFiles.length})` : ""}</span>
-            </button>
-
-            <button
-              type="submit"
-              disabled={isPosting || !newContent.trim()}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center space-x-1"
-            >
-              <Upload className="w-3.5 h-3.5" />
-              <span>{isPosting ? "업로드 중..." : "게시하기"}</span>
-            </button>
-          </div>
-        </form>
-      )}
-
-      {/* 정렬 필터 탭 (기획서 Page 10 - Latest vs Popular) */}
+      {/* 정렬 필터 탭 (Latest vs Popular) */}
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center space-x-1.5 bg-slate-100 p-1 rounded-2xl">
           <button
@@ -493,158 +445,338 @@ export function CommunityFeedView() {
         </span>
       </div>
 
-      {/* 피드 목록 (기획서 Page 10 - 인스타그램 피드 스타일) */}
-      <div className="space-y-4">
-        {sortCommunityPosts(posts, sortOrder).map((post) => (
-          <div
-            key={post.id}
-            className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden"
-          >
-            {/* 작성자 정보 헤더 */}
-            <div className="p-4 flex items-center justify-between border-b border-slate-50">
-              <div className="flex items-center space-x-2.5">
-                <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-xs font-bold text-slate-700">
-                  {post.author[0]}
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-slate-900 flex items-center space-x-1.5 flex-wrap">
-                    <span>{post.author}</span>
-                    {(post.isOfficial || isOfficialRole(post.role)) && (
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                        <ShieldCheck className="w-3 h-3 mr-0.5 text-amber-600" />
-                        인증
-                      </span>
-                    )}
-                    <span className="text-[10px] font-normal text-slate-400">· {post.timeAgo}</span>
+      {/* 피드 목록 (인스타그램 카드 스타일) */}
+      <div className="space-y-5">
+        {sortCommunityPosts(posts, sortOrder).map((post) => {
+          const mediaList = getPostMediaUrls(post);
+          const postComments = commentsMap[post.id] || [];
+          const isCommentsOpen = activeCommentPostId === post.id;
+          const currentCommentText = commentInputTexts[post.id] || "";
+
+          return (
+            <article
+              key={post.id}
+              className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden transition-shadow hover:shadow-md"
+            >
+              {/* 1. 인스타그램 프로필 헤더 */}
+              <div className="p-3.5 flex items-center justify-between border-b border-slate-50">
+                <div className="flex items-center space-x-3">
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-amber-400 to-rose-500 p-0.5 shadow-xs">
+                    <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-xs font-bold text-slate-800">
+                      {post.author[0]}
+                    </div>
                   </div>
-                  <div className="text-[10px] text-blue-600 font-medium">
-                    {post.parish}성당 · {post.role}
-                  </div>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setReportingPost(post)}
-                className="text-slate-300 hover:text-rose-500 p-1 rounded-lg transition-colors"
-                title="게시글 신고"
-              >
-                <Flag className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            {/* 이미지 및 멀티 미디어 (선택) */}
-            {(() => {
-              const mediaList = getPostMediaUrls(post);
-              if (mediaList.length === 0) return null;
-
-              if (mediaList.length === 1) {
-                const singleUrl = mediaList[0];
-                const isVideo = isVideoUrl(singleUrl);
-
-                return (
-                  <div
-                    data-testid="post-media-thumbnail"
-                    onClick={() => openViewer(mediaList, 0, post.author)}
-                    className="relative w-full aspect-video bg-slate-100 overflow-hidden cursor-pointer group"
-                  >
-                    {isVideo ? (
-                      <video src={singleUrl} className="w-full h-full object-cover" controls preload="metadata" />
-                    ) : (
-                      <img
-                        src={singleUrl}
-                        alt="순례 인증샷"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    )}
-                  </div>
-                );
-              }
-
-              // 2장 이상 멀티 미디어 그리드
-              return (
-                <div
-                  data-testid="post-media-thumbnail"
-                  className="grid grid-cols-2 gap-1 w-full aspect-video bg-slate-100 overflow-hidden cursor-pointer"
-                  onClick={() => openViewer(mediaList, 0, post.author)}
-                >
-                  {mediaList.slice(0, 4).map((url, idx) => {
-                    const isVideo = isVideoUrl(url);
-                    const isLast = idx === 3 && mediaList.length > 4;
-
-                    return (
-                      <div
-                        key={`${url}-${idx}`}
-                        className="relative w-full h-full overflow-hidden group bg-slate-200"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openViewer(mediaList, idx, post.author);
-                        }}
-                      >
-                        {isVideo ? (
-                          <video src={url} className="w-full h-full object-cover" muted />
-                        ) : (
-                          <img
-                            src={url}
-                            alt={`순례 인증샷 ${idx + 1}`}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                        )}
-                        {isVideo && (
-                          <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded text-[8px] font-bold bg-black/70 text-white">
-                            VIDEO
-                          </span>
-                        )}
-                        {isLast && (
-                          <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white text-base font-black">
-                            +{mediaList.length - 3}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })()}
-
-            {/* 본문 및 인터랙션 */}
-            <div className="p-4 space-y-2">
-              <div className="flex items-center justify-between text-slate-600">
-                <div className="flex items-center space-x-4">
-                  <button
-                    data-testid="like-button"
-                    data-post-id={post.id}
-                    onClick={() => handleLike(post.id)}
-                    className={`flex items-center space-x-1 text-xs font-semibold transition-colors ${
-                      post.isLiked ? "text-rose-600" : "hover:text-rose-500"
-                    }`}
-                  >
-                    <Heart className={`w-4 h-4 ${post.isLiked ? "fill-rose-600" : ""}`} />
-                    <span data-testid="like-count">{post.likes}</span>
-                  </button>
-                  <div className="flex items-center space-x-1 text-xs text-slate-400">
-                    <MessageSquare className="w-4 h-4" />
-                    <span>소통</span>
+                  <div>
+                    <div className="text-xs font-bold text-slate-900 flex items-center space-x-1.5 flex-wrap">
+                      <span>{post.author}</span>
+                      {(post.isOfficial || isOfficialRole(post.role)) && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                          <ShieldCheck className="w-3 h-3 mr-0.5 text-amber-600" />
+                          인증
+                        </span>
+                      )}
+                      <span className="text-[10px] font-normal text-slate-400">· {post.timeAgo || formatTimeAgo(post.createdAt)}</span>
+                    </div>
+                    <div className="text-[10px] text-blue-600 font-medium">
+                      부산 청년의날 BYD {post.parish} 모둠 · {post.role}
+                    </div>
                   </div>
                 </div>
-
                 <button
                   type="button"
-                  onClick={() => handleSharePost(post)}
-                  className="flex items-center space-x-1 text-xs text-slate-400 hover:text-blue-600 transition-colors"
-                  title="게시글 공유"
+                  onClick={() => setReportingPost(post)}
+                  className="text-slate-300 hover:text-rose-500 p-1.5 rounded-lg transition-colors"
+                  title="게시글 신고"
                 >
-                  <Share2 className="w-4 h-4" />
-                  <span>공유</span>
+                  <Flag className="w-4 h-4" />
                 </button>
               </div>
 
-              <p className="text-xs leading-relaxed text-slate-800 font-normal">
-                {post.content}
-              </p>
-            </div>
-          </div>
-        ))}
+              {/* 2. 미디어 렌더링: 첫 이미지만 목록에 깔끔하게 노출 + 다중 이미지 뱃지 (DoD 3) */}
+              {mediaList.length > 0 && (
+                <div
+                  data-testid="post-media-thumbnail"
+                  onClick={() => openViewer(mediaList, 0, post.author)}
+                  className="relative w-full aspect-square sm:aspect-[4/3] bg-slate-950 overflow-hidden cursor-pointer group"
+                >
+                  {isVideoUrl(mediaList[0]) ? (
+                    <video
+                      src={mediaList[0]}
+                      className="w-full h-full object-cover"
+                      controls
+                      preload="metadata"
+                    />
+                  ) : (
+                    <img
+                      src={mediaList[0]}
+                      alt="순례 인증샷"
+                      className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300"
+                    />
+                  )}
+
+                  {/* 멀티이미지 여부 판별 및 다중 이미지 뱃지 (DoD 3) */}
+                  {mediaList.length > 1 && (
+                    <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-xs text-white text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center space-x-1.5 shadow-md">
+                      <Layers className="w-3.5 h-3.5" />
+                      <span>1/{mediaList.length}</span>
+                    </div>
+                  )}
+
+                  {/* 비디오 단독 뱃지 */}
+                  {isVideoUrl(mediaList[0]) && (
+                    <span className="absolute bottom-3 left-3 px-2 py-0.5 rounded-md text-[9px] font-bold bg-black/70 text-white backdrop-blur-xs">
+                      동영상
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* 3. 인스타그램 액션 바 (하트 좋아요, 말풍선 댓글, 공유) */}
+              <div className="p-4 space-y-2.5">
+                <div className="flex items-center justify-between text-slate-700">
+                  <div className="flex items-center space-x-4">
+                    <button
+                      type="button"
+                      data-testid="like-button"
+                      data-post-id={post.id}
+                      onClick={() => handleLike(post.id)}
+                      className={`flex items-center space-x-1.5 text-xs font-semibold transition-transform active:scale-90 ${
+                        post.isLiked ? "text-rose-600" : "text-slate-700 hover:text-rose-600"
+                      }`}
+                    >
+                      <Heart className={`w-5 h-5 ${post.isLiked ? "fill-rose-600 text-rose-600" : ""}`} />
+                      <span data-testid="like-count" className="font-bold">{post.likes}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveCommentPostId((cur) => (cur === post.id ? null : post.id))}
+                      className="flex items-center space-x-1.5 text-xs font-semibold text-slate-700 hover:text-blue-600 transition-colors"
+                    >
+                      <MessageSquare className="w-5 h-5" />
+                      <span className="font-bold">{postComments.length}</span>
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSharePost(post)}
+                    className="p-1 text-slate-400 hover:text-blue-600 transition-colors"
+                    title="게시글 공유"
+                  >
+                    <Share2 className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* 본문 텍스트 */}
+                <div className="text-xs text-slate-800 leading-relaxed space-x-1.5">
+                  <span className="font-bold text-slate-900">{post.author}</span>
+                  <span className="whitespace-pre-wrap">{post.content}</span>
+                </div>
+
+                {/* 4. 댓글 섹션 (DoD 4) */}
+                <div className="pt-2 border-t border-slate-50 space-y-2">
+                  {/* 댓글 미리보기 및 펼쳐보기 */}
+                  {postComments.length > 0 && (
+                    <div className="space-y-1.5">
+                      {!isCommentsOpen && postComments.length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => setActiveCommentPostId(post.id)}
+                          className="text-[11px] font-semibold text-slate-400 hover:text-slate-600"
+                        >
+                          댓글 {postComments.length}개 모두 보기
+                        </button>
+                      )}
+
+                      {(isCommentsOpen ? postComments : postComments.slice(-2)).map((c) => (
+                        <div key={c.id} className="text-xs text-slate-700 flex items-start space-x-1.5 leading-snug">
+                          <span className="font-bold text-slate-900 shrink-0">{c.author}:</span>
+                          <span className="text-slate-700 break-all">{c.content}</span>
+                          <span className="text-[10px] text-slate-400 shrink-0 ml-auto">
+                            {formatTimeAgo(c.createdAt)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* 인라인 댓글 작성 폼 */}
+                  <form
+                    onSubmit={(e) => handleCommentSubmit(post.id, e)}
+                    className="flex items-center space-x-2 pt-1"
+                  >
+                    <input
+                      type="text"
+                      placeholder="댓글 달기..."
+                      value={currentCommentText}
+                      onChange={(e) =>
+                        setCommentInputTexts((prev) => ({
+                          ...prev,
+                          [post.id]: e.target.value,
+                        }))
+                      }
+                      className="flex-1 text-xs px-3 py-1.5 bg-slate-50 rounded-full border border-slate-200 focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
+                    />
+                    <button
+                      type="submit"
+                      disabled={!currentCommentText.trim()}
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-full text-xs font-bold transition-all shrink-0"
+                    >
+                      게시
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </article>
+          );
+        })}
       </div>
+
+      {/* 새 게시글 작성 모달 다이얼로그 (DoD 4 & DoD 5) */}
+      {isUploadModalOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isPosting) {
+              setIsUploadModalOpen(false);
+            }
+          }}
+        >
+          <div className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto animate-in fade-in slide-in-from-bottom duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center space-x-2">
+                <span className="text-base">✨</span>
+                <h3 className="font-bold text-sm text-slate-900">새 게시물 작성</h3>
+              </div>
+              <button
+                type="button"
+                disabled={isPosting}
+                onClick={() => setIsUploadModalOpen(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-full"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreatePost} className="space-y-4">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs">
+                  {user?.name?.[0] || "P"}
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-slate-800">
+                    {user?.name || "참가자"}
+                  </div>
+                  <div className="text-[10px] text-slate-400">
+                    부산 청년의날 BYD {user?.parish || "부산"} 모둠 · {user?.role || "청년"}
+                  </div>
+                </div>
+              </div>
+
+              <textarea
+                rows={4}
+                placeholder="청년의 날 은혜로운 순간이나 응원 한마디를 남겨보세요..."
+                value={newContent}
+                onChange={(e) => setNewContent(e.target.value)}
+                className="w-full text-xs p-3.5 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              />
+
+              {/* 첨부된 미디어 미리보기 */}
+              {previewUrls.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
+                    <span>첨부된 미디어 ({previewUrls.length}/5)</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        previewUrls.forEach((url) => URL.revokeObjectURL(url));
+                        setSelectedFiles([]);
+                        setPreviewUrls([]);
+                      }}
+                      className="text-rose-500 hover:text-rose-600"
+                    >
+                      전체 취소
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                    {previewUrls.map((url, idx) => {
+                      const file = selectedFiles[idx];
+                      const isVideo = file ? isVideoFile(file) : isVideoUrl(url);
+
+                      return (
+                        <div
+                          key={`${url}-${idx}`}
+                          className="relative aspect-square rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 group"
+                        >
+                          {isVideo ? (
+                            <video src={url} className="w-full h-full object-cover" muted />
+                          ) : (
+                            <img src={url} alt={`미리보기 ${idx + 1}`} className="w-full h-full object-cover" />
+                          )}
+                          {isVideo && (
+                            <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded text-[8px] font-bold bg-black/70 text-white">
+                              동영상
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveFile(idx)}
+                            className="absolute top-1 right-1 p-1 bg-black/70 text-white rounded-full hover:bg-black/90 transition-colors shadow-sm"
+                            title="삭제"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-between items-center pt-2 border-t border-slate-100">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  multiple
+                  accept="image/*,video/*"
+                  data-testid="media-file-input"
+                  className="hidden"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center space-x-1.5 text-blue-600 hover:text-blue-700 text-xs font-bold bg-blue-50 px-3.5 py-2 rounded-xl transition-colors"
+                >
+                  <Camera className="w-4 h-4" />
+                  <span>사진·동영상 첨부 {selectedFiles.length > 0 ? `(${selectedFiles.length})` : ""}</span>
+                </button>
+
+                <div className="flex items-center space-x-2">
+                  <button
+                    type="button"
+                    disabled={isPosting}
+                    onClick={() => setIsUploadModalOpen(false)}
+                    className="px-3.5 py-2 text-slate-500 hover:bg-slate-100 rounded-xl text-xs font-semibold transition-all"
+                  >
+                    취소
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isPosting || !newContent.trim()}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center space-x-1"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>{isPosting ? "업로드 중..." : "게시하기"}</span>
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* 게시글 신고 다이얼로그 모달 */}
       {reportingPost && (
@@ -685,7 +817,7 @@ export function CommunityFeedView() {
         </div>
       )}
 
-      {/* 5. 구글포토 스타일 전체화면 확대 슬라이드 뷰어 */}
+      {/* 전체화면 확대 슬라이드 뷰어 */}
       <MediaSliderViewer
         isOpen={viewerOpen}
         mediaUrls={viewerMediaUrls}
