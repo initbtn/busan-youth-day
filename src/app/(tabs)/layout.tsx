@@ -106,33 +106,38 @@ function TabsLayoutContent({
       </main>
 
       {/* 하단 고정 네비게이션 바 (Persistent Bottom Nav) */}
-      <nav className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 py-2 px-3">
-        <div className="max-w-md mx-auto grid grid-cols-5 text-center">
+      <nav className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/80 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] px-3 shadow-lg">
+        <div className="max-w-md mx-auto grid grid-cols-5 text-center items-center">
           <Link
             href="/"
-            className={`flex flex-col items-center space-y-1 text-[11px] font-semibold transition-colors ${
-              isHome ? "text-orange-600" : "text-slate-400 hover:text-slate-600"
+            className={`flex flex-col items-center py-1 space-y-1 text-[11px] transition-all active:scale-95 ${
+              isHome
+                ? "text-orange-600 font-bold"
+                : "text-slate-400 hover:text-slate-600 font-medium"
             }`}
           >
-            <Compass className="w-5 h-5" />
+            <Compass className={`w-5 h-5 transition-transform ${isHome ? "scale-110" : ""}`} />
             <span>메인</span>
           </Link>
 
           <Link
             href="/map"
-            className={`flex flex-col items-center space-y-1 text-[11px] font-semibold transition-colors ${
-              isMap ? "text-orange-600" : "text-slate-400 hover:text-slate-600"
+            className={`flex flex-col items-center py-1 space-y-1 text-[11px] transition-all active:scale-95 ${
+              isMap
+                ? "text-orange-600 font-bold"
+                : "text-slate-400 hover:text-slate-600 font-medium"
             }`}
           >
-            <Map className="w-5 h-5" />
+            <Map className={`w-5 h-5 transition-transform ${isMap ? "scale-110" : ""}`} />
             <span>지도</span>
           </Link>
 
           <Link
             href="/feed?action=write"
-            className="flex flex-col items-center space-y-1 text-[11px] font-semibold text-slate-400 hover:text-orange-600 transition-colors"
+            className="flex flex-col items-center py-0.5 space-y-0.5 text-[11px] font-bold text-slate-500 hover:text-orange-600 transition-all group active:scale-90"
+            title="새 게시물 작성"
           >
-            <div className="p-1 -mt-1 rounded-full bg-orange-500 text-white shadow-sm flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-orange-500 to-amber-500 text-white shadow-md flex items-center justify-center -mt-3.5 group-hover:shadow-lg group-hover:scale-105 transition-all border-2 border-white">
               <PlusCircle className="w-5 h-5" />
             </div>
             <span>새글작성</span>
@@ -140,22 +145,26 @@ function TabsLayoutContent({
 
           <Link
             href="/feed"
-            className={`flex flex-col items-center space-y-1 text-[11px] font-semibold transition-colors ${
-              isFeed ? "text-orange-600" : "text-slate-400 hover:text-slate-600"
+            className={`flex flex-col items-center py-1 space-y-1 text-[11px] transition-all active:scale-95 ${
+              isFeed
+                ? "text-orange-600 font-bold"
+                : "text-slate-400 hover:text-slate-600 font-medium"
             }`}
           >
-            <Users className="w-5 h-5" />
+            <Users className={`w-5 h-5 transition-transform ${isFeed ? "scale-110" : ""}`} />
             <span>이모저모</span>
           </Link>
 
           <Link
             href="/seating"
-            className={`flex flex-col items-center space-y-1 text-[11px] font-semibold transition-colors relative ${
-              isSeating ? "text-orange-600" : "text-slate-400 hover:text-slate-600"
+            className={`flex flex-col items-center py-1 space-y-1 text-[11px] transition-all active:scale-95 relative ${
+              isSeating
+                ? "text-orange-600 font-bold"
+                : "text-slate-400 hover:text-slate-600 font-medium"
             }`}
           >
             <div className="relative">
-              <MapPin className="w-5 h-5" />
+              <MapPin className={`w-5 h-5 transition-transform ${isSeating ? "scale-110" : ""}`} />
               <span className="absolute -top-1 -right-1 w-2 h-2 bg-orange-500 rounded-full animate-pulse" />
             </div>
             <span>미사안내</span>
