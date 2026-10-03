@@ -156,7 +156,7 @@ export async function convertHeicToJpegIfPossible(file: File): Promise<File | Bl
     const convertedBlob = Array.isArray(conversionResult) ? conversionResult[0] : conversionResult;
     if (!convertedBlob) return file;
 
-    const newFileName = file.name.replace(/\.(heic|heif)$/i, ".jpg");
+    const newFileName = (file.name || "image.heic").replace(/\.(heic|heif)$/i, ".jpg");
     return new File([convertedBlob], newFileName, {
       type: "image/jpeg",
       lastModified: Date.now(),
@@ -278,14 +278,15 @@ export async function optimizeImage(
       };
 
       const handleSuccess = (blob: Blob, usedMime: string) => {
-        // 압축 후 용량이 오히려 증가한 경우 원본 반환
-        if (blob.size >= file.size) {
+        // 압축 후 용량이 오히려 증가한 경우 원본 반환 (단, HEIC는 타 브라우저 호환성을 위해 무조건 변환본 반환)
+        if (!isHeicFile(file) && blob.size >= file.size) {
           resolve(file);
           return;
         }
 
         const targetExt = usedMime === "image/webp" ? ".webp" : ".jpg";
-        const optimizedFile = new File([blob], file.name.replace(/\.[^/.]+$/, targetExt), {
+        const safeName = file.name || "image.jpg";
+        const optimizedFile = new File([blob], safeName.replace(/\.[^/.]+$/, targetExt), {
           type: usedMime,
           lastModified: Date.now(),
         });
