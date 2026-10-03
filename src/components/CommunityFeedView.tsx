@@ -42,7 +42,13 @@ import {
   formatTimeAgo,
 } from "@/lib/communityPosts";
 import { optimizeImage, isSupportedMediaType, isVideoFile } from "@/lib/imageOptimizer";
-import { isVideoUrl, compressVideoIfNeeded } from "@/lib/videoCompressor";
+import {
+  isVideoUrl,
+  compressVideoIfNeeded,
+  getVideoMetadata,
+  MAX_VIDEO_SIZE_BYTES,
+  MAX_VIDEO_DURATION_SECONDS,
+} from "@/lib/videoCompressor";
 import { MediaSliderViewer } from "@/components/MediaSliderViewer";
 import { signInWithKakao } from "@/lib/auth/kakao";
 import { useSearchParams } from "next/navigation";
@@ -382,8 +388,10 @@ export function CommunityFeedView() {
         continue;
       }
 
-      if (isVideoFile(file) && file.size > 50 * 1024 * 1024) {
-        alert(`${file.name}: 동영상 크기는 최대 50MB 이하여야 합니다.`);
+      if (isVideoFile(file) && file.size > MAX_VIDEO_SIZE_BYTES) {
+        alert(
+          `${file.name}: 동영상 크기는 최대 ${(MAX_VIDEO_SIZE_BYTES / (1024 * 1024)).toFixed(0)}MB 이하여야 합니다. (현재: ${(file.size / 1024 / 1024).toFixed(1)}MB)`
+        );
         continue;
       }
 
@@ -394,16 +402,30 @@ export function CommunityFeedView() {
 
       try {
         if (isVideoFile(file)) {
+          // 1분(60초) 이내 숏츠 재생시간 검증
+          const meta = await getVideoMetadata(file);
+          if (meta.duration > MAX_VIDEO_DURATION_SECONDS) {
+            alert(
+              `${file.name}: 동영상은 ${MAX_VIDEO_DURATION_SECONDS}초(1분) 이내의 숏츠 영상만 등록할 수 있습니다. (현재: ${Math.round(meta.duration)}초)`
+            );
+            continue;
+          }
+
           const validated = await compressVideoIfNeeded(file);
           newOptimizedFiles.push(validated as File);
           newPreviews.push(URL.createObjectURL(validated));
         } else {
-          const optimized = await optimizeImage(file, { maxDimension: 1920, quality: 0.85 });
+          const optimized = await optimizeImage(file, { maxDimension: 1920, quality: 0.85, mimeType: "image/webp" });
           newOptimizedFiles.push(optimized as File);
           newPreviews.push(URL.createObjectURL(optimized));
         }
       } catch (err) {
         console.warn("Media processing error:", err);
+        const errMsg = err instanceof Error ? err.message : "미디어 처리 중 오류가 발생했습니다.";
+        if (errMsg.includes("숏츠") || errMsg.includes("MB")) {
+          alert(`${file.name}: ${errMsg}`);
+          continue;
+        }
         newOptimizedFiles.push(file);
         newPreviews.push(URL.createObjectURL(file));
       }

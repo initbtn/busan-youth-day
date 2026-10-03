@@ -86,4 +86,41 @@ describe("소통피드 미디어 고도화 단위 테스트 (Issue #33)", () => 
     assert.equal(isVideoUrl("https://r2.example.com/test.jpg"), false);
     assert.equal(isVideoUrl("https://r2.example.com/test.png"), false);
   });
+
+  test("DoD 4: 1분 이내 숏츠 영상 제한(60s) 및 보수적 용량 제한(15MB) 검증 (Issue #71)", async () => {
+    const {
+      MAX_VIDEO_SIZE_BYTES,
+      MAX_VIDEO_DURATION_SECONDS,
+      compressVideoIfNeeded,
+    } = await import("../src/lib/videoCompressor.ts");
+
+    assert.equal(MAX_VIDEO_SIZE_BYTES, 15 * 1024 * 1024, "최대 비디오 용량은 15MB여야 함");
+    assert.equal(MAX_VIDEO_DURATION_SECONDS, 60, "최대 비디오 길이는 60초(1분) 숏츠여야 함");
+
+    // 15MB 초과 mock file 테스트
+    const oversizedFile = {
+      name: "large_video.mp4",
+      size: 16 * 1024 * 1024,
+      type: "video/mp4",
+    };
+
+    await assert.rejects(
+      async () => {
+        await compressVideoIfNeeded(oversizedFile);
+      },
+      /최대 15MB까지/,
+      "15MB 초과 영상은 에러를 던져야 함"
+    );
+
+    // 15MB 이하 허용 범위 mock file 테스트
+    const validFile = {
+      name: "valid_short.mp4",
+      size: 8 * 1024 * 1024,
+      type: "video/mp4",
+    };
+
+    const result = await compressVideoIfNeeded(validFile);
+    assert.equal(result.name, "valid_short.mp4");
+  });
 });
+
