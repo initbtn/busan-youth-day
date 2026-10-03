@@ -100,4 +100,44 @@ describe("지도 핀 간소화, 부스 상세 직결, 인스타그램 스타일 
       "전역 CSS에 스크롤바 숨김(scrollbar-width: none 또는 ::-webkit-scrollbar)이 설정되어야 함"
     );
   });
+
+  it("DoD 6: 소통피드 카드 이미지·동영상 인라인 캐러셀 슬라이더(PostMediaCarousel) 검증 (Issue #66)", () => {
+    const feedPath = path.join(projectRoot, "src/components/CommunityFeedView.tsx");
+    const content = fs.readFileSync(feedPath, "utf-8");
+
+    // PostMediaCarousel 컴포넌트 실재 확인
+    assert.ok(
+      content.includes("function PostMediaCarousel") || content.includes("const PostMediaCarousel"),
+      "PostMediaCarousel 컴포넌트가 구현되어 있어야 함"
+    );
+
+    // 이전/다음 네비게이션 버튼 확인
+    assert.ok(
+      content.includes("handlePrev") && content.includes("handleNext"),
+      "캐러셀 좌우 이동 핸들러가 탑재되어 있어야 함"
+    );
+    assert.ok(
+      content.includes("ChevronLeft") && content.includes("ChevronRight"),
+      "캐러셀 좌우 화살표 아이콘이 렌더링되어야 함"
+    );
+
+    // 모바일 터치 스와이프 제스처 이벤트 확인
+    assert.ok(
+      content.includes("onTouchStart") && content.includes("onTouchMove") && content.includes("onTouchEnd"),
+      "모바일 터치 스와이프 제스처(touchstart, touchmove, touchend)가 구현되어 있어야 함"
+    );
+
+    // 페이지 인디케이터(도트) 및 뱃지 확인
+    assert.ok(
+      content.includes("activeIndex === idx") || content.includes("activeIndex"),
+      "캐러셀 현재 활성 인덱스 상태 및 도트 인디케이터가 연동되어 있어야 함"
+    );
+
+    // 피드 아티클 내 PostMediaCarousel 사용 확인
+    assert.ok(
+      content.includes("<PostMediaCarousel"),
+      "피드 게시글 아티클 미디어 영역에 PostMediaCarousel이 연동되어야 함"
+    );
+  });
 });
+

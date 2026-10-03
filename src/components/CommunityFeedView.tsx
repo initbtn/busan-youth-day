@@ -17,6 +17,8 @@ import {
   Flame,
   Plus,
   Layers,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useUser } from "@/context/UserContext";
 import { createClient } from "@/lib/supabase/client";
@@ -44,6 +46,144 @@ import { isVideoUrl, compressVideoIfNeeded } from "@/lib/videoCompressor";
 import { MediaSliderViewer } from "@/components/MediaSliderViewer";
 import { signInWithKakao } from "@/lib/auth/kakao";
 import { useSearchParams } from "next/navigation";
+
+interface PostMediaCarouselProps {
+  mediaUrls: string[];
+  author: string;
+  onOpenViewer: (mediaUrls: string[], index: number, author?: string) => void;
+}
+
+function PostMediaCarousel({ mediaUrls, author, onOpenViewer }: PostMediaCarouselProps) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const touchStartX = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
+
+  if (!mediaUrls || mediaUrls.length === 0) return null;
+
+  const handlePrev = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setActiveIndex((prev) => (prev > 0 ? prev - 1 : mediaUrls.length - 1));
+  };
+
+  const handleNext = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setActiveIndex((prev) => (prev < mediaUrls.length - 1 ? prev + 1 : 0));
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStartX.current || !touchEndX.current) return;
+    const diffX = touchStartX.current - touchEndX.current;
+    const threshold = 40;
+    if (diffX > threshold) {
+      setActiveIndex((prev) => (prev < mediaUrls.length - 1 ? prev + 1 : 0));
+    } else if (diffX < -threshold) {
+      setActiveIndex((prev) => (prev > 0 ? prev - 1 : mediaUrls.length - 1));
+    }
+    touchStartX.current = null;
+    touchEndX.current = null;
+  };
+
+  const currentMedia = mediaUrls[activeIndex] || mediaUrls[0];
+  const isVideo = isVideoUrl(currentMedia);
+
+  return (
+    <div
+      data-testid="post-media-thumbnail"
+      onClick={() => onOpenViewer(mediaUrls, activeIndex, author)}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      className="relative w-full aspect-square sm:aspect-[4/3] bg-slate-950 overflow-hidden cursor-pointer select-none group"
+    >
+      {isVideo ? (
+        <video
+          key={currentMedia}
+          src={currentMedia}
+          className="w-full h-full object-cover"
+          controls
+          preload="metadata"
+          onClick={(e) => e.stopPropagation()}
+        />
+      ) : (
+        <img
+          key={currentMedia}
+          src={currentMedia}
+          alt={`순례 인증샷 ${activeIndex + 1}`}
+          className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300"
+        />
+      )}
+
+      {/* 멀티 미디어 캐러셀 화살표 네비게이션 */}
+      {mediaUrls.length > 1 && (
+        <>
+          <button
+            type="button"
+            onClick={handlePrev}
+            className="absolute left-2.5 top-1/2 -translate-y-1/2 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-black/50 hover:bg-black/75 text-white flex items-center justify-center transition-all backdrop-blur-xs opacity-80 group-hover:opacity-100 shadow-md z-10"
+            title="이전 사진/영상"
+          >
+            <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+          </button>
+          <button
+            type="button"
+            onClick={handleNext}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-black/50 hover:bg-black/75 text-white flex items-center justify-center transition-all backdrop-blur-xs opacity-80 group-hover:opacity-100 shadow-md z-10"
+            title="다음 사진/영상"
+          >
+            <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+          </button>
+        </>
+      )}
+
+      {/* 멀티이미지 여부 판별 및 다중 이미지 뱃지 (DoD 3 호환 & 인덱스 표시) */}
+      {mediaUrls.length > 1 && (
+        <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-xs text-white text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center space-x-1.5 shadow-md z-10">
+          <Layers className="w-3.5 h-3.5" />
+          <span>
+            {activeIndex + 1}/{mediaUrls.length}
+          </span>
+        </div>
+      )}
+
+      {/* 캐러셀 하단 페이지 도트 인디케이터 */}
+      {mediaUrls.length > 1 && (
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-black/40 backdrop-blur-xs z-10">
+          {mediaUrls.map((_, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveIndex(idx);
+              }}
+              className={`rounded-full transition-all ${
+                activeIndex === idx
+                  ? "w-2.5 h-1.5 bg-white"
+                  : "w-1.5 h-1.5 bg-white/50 hover:bg-white/80"
+              }`}
+              title={`${idx + 1}번째 미디어`}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* 비디오 단독 뱃지 */}
+      {isVideo && (
+        <span className="absolute bottom-3 left-3 px-2 py-0.5 rounded-md text-[9px] font-bold bg-black/70 text-white backdrop-blur-xs z-10">
+          동영상
+        </span>
+      )}
+    </div>
+  );
+}
 
 export function CommunityFeedView() {
   const searchParams = useSearchParams();
@@ -544,44 +684,13 @@ export function CommunityFeedView() {
                 </button>
               </div>
 
-              {/* 2. 미디어 렌더링: 첫 이미지만 목록에 깔끔하게 노출 + 다중 이미지 뱃지 (DoD 3) */}
+              {/* 2. 미디어 렌더링: 이미지·영상 캐러셀 (DoD 3 & 캐러셀) */}
               {mediaList.length > 0 && (
-                <div
-                  data-testid="post-media-thumbnail"
-                  onClick={() => openViewer(mediaList, 0, post.author)}
-                  className="relative w-full aspect-square sm:aspect-[4/3] bg-slate-950 overflow-hidden cursor-pointer group"
-                >
-                  {isVideoUrl(mediaList[0]) ? (
-                    <video
-                      src={mediaList[0]}
-                      className="w-full h-full object-cover"
-                      controls
-                      preload="metadata"
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  ) : (
-                    <img
-                      src={mediaList[0]}
-                      alt="순례 인증샷"
-                      className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300"
-                    />
-                  )}
-
-                  {/* 멀티이미지 여부 판별 및 다중 이미지 뱃지 (DoD 3) */}
-                  {mediaList.length > 1 && (
-                    <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-xs text-white text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center space-x-1.5 shadow-md">
-                      <Layers className="w-3.5 h-3.5" />
-                      <span>1/{mediaList.length}</span>
-                    </div>
-                  )}
-
-                  {/* 비디오 단독 뱃지 */}
-                  {isVideoUrl(mediaList[0]) && (
-                    <span className="absolute bottom-3 left-3 px-2 py-0.5 rounded-md text-[9px] font-bold bg-black/70 text-white backdrop-blur-xs">
-                      동영상
-                    </span>
-                  )}
-                </div>
+                <PostMediaCarousel
+                  mediaUrls={mediaList}
+                  author={post.author}
+                  onOpenViewer={openViewer}
+                />
               )}
 
               {/* 3. 인스타그램 액션 바 (하트 좋아요, 말풍선 댓글, 공유) */}
