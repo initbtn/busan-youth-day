@@ -41,7 +41,7 @@ import {
   cacheComments,
   formatTimeAgo,
 } from "@/lib/communityPosts";
-import { optimizeImage, isSupportedMediaType, isVideoFile } from "@/lib/imageOptimizer";
+import { optimizeImage, isSupportedMediaType, isVideoFile, resolveEffectiveMimeType } from "@/lib/imageOptimizer";
 import {
   isVideoUrl,
   compressVideoIfNeeded,
@@ -383,8 +383,8 @@ export function CommunityFeedView() {
     const newPreviews: string[] = [];
 
     for (const file of rawFiles) {
-      if (!isSupportedMediaType(file.type)) {
-        alert(`${file.name}: 지원하지 않는 파일 형식입니다. (JPEG, PNG, WebP, GIF, MP4, MOV 등 지원)`);
+      if (!isSupportedMediaType(file.type, file.name)) {
+        alert(`${file.name}: 지원하지 않는 파일 형식입니다. (JPEG, PNG, WebP, GIF, HEIC, MP4, MOV 등 지원)`);
         continue;
       }
 
@@ -500,12 +500,13 @@ export function CommunityFeedView() {
     if (selectedFiles.length > 0) {
       try {
         for (const file of selectedFiles) {
+          const effectiveContentType = resolveEffectiveMimeType(file);
           const presignedRes = await fetch("/api/upload", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               fileName: file.name,
-              contentType: file.type || "application/octet-stream",
+              contentType: effectiveContentType,
             }),
           });
 
@@ -516,7 +517,7 @@ export function CommunityFeedView() {
           const { uploadUrl, publicUrl } = await presignedRes.json();
           const uploadRes = await fetch(uploadUrl, {
             method: "PUT",
-            headers: { "Content-Type": file.type || "application/octet-stream" },
+            headers: { "Content-Type": effectiveContentType },
             body: file,
           });
 
