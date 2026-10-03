@@ -59,10 +59,10 @@ export const MAX_VIDEO_DURATION_SECONDS = 60; // 60초 (1분 숏츠 제한)
 /**
  * 비디오 용량 검증 및 필요 시 경량화 (최대 15MB 허용, 미지원 환경 시 원본 유지)
  */
-export async function compressVideoIfNeeded(
-  file: File | { name: string; size: number; type: string },
+export async function compressVideoIfNeeded<T extends File | Blob | { name: string; size: number; type: string }>(
+  file: T,
   maxSizeBytes = MAX_VIDEO_SIZE_BYTES
-): Promise<File | Blob | { name: string; size: number; type: string }> {
+): Promise<T> {
   // 용량 제한 검증 (15MB 초과 시 에러 발생)
   if (file.size > maxSizeBytes) {
     throw new Error(`동영상 파일 크기는 최대 ${(maxSizeBytes / 1024 / 1024).toFixed(0)}MB까지 첨부할 수 있습니다. (현재: ${(file.size / 1024 / 1024).toFixed(1)}MB)`);
@@ -70,9 +70,9 @@ export async function compressVideoIfNeeded(
 
   // 브라우저가 지원하지 않거나 10MB 이하의 적정 용량인 경우 원본 반환
   if (!checkVideoCompressionSupport() || file.size <= 10 * 1024 * 1024) {
-    return file as any;
+    return file;
   }
 
   // Graceful fallback: 네이티브 브라우저 환경에서 안정적인 업로드를 위해 원본 반환
-  return file as any;
+  return file;
 }
