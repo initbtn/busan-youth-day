@@ -383,8 +383,8 @@ export function CommunityFeedView() {
     const newPreviews: string[] = [];
 
     for (const file of rawFiles) {
-      if (!isSupportedMediaType(file.type)) {
-        alert(`${file.name}: 지원하지 않는 파일 형식입니다. (JPEG, PNG, WebP, GIF, MP4, MOV 등 지원)`);
+      if (!isSupportedMediaType(file.type, file.name)) {
+        alert(`${file.name}: 지원하지 않는 파일 형식입니다. (JPEG, PNG, WebP, GIF, HEIC, MP4, MOV 등 지원)`);
         continue;
       }
 

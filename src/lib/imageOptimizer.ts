@@ -25,18 +25,63 @@ const SUPPORTED_VIDEO_TYPES = new Set([
   "video/quicktime",
 ]);
 
-export function isSupportedMediaType(mimeType: string): boolean {
-  if (!mimeType) return false;
-  const normalized = mimeType.toLowerCase().trim();
-  return SUPPORTED_IMAGE_TYPES.has(normalized) || SUPPORTED_VIDEO_TYPES.has(normalized);
+const SUPPORTED_IMAGE_EXTENSIONS = new Set([
+  "jpg",
+  "jpeg",
+  "png",
+  "webp",
+  "gif",
+  "heic",
+  "heif",
+]);
+
+const SUPPORTED_VIDEO_EXTENSIONS = new Set([
+  "mp4",
+  "webm",
+  "mov",
+  "quicktime",
+]);
+
+function getFileExtension(filename?: string): string {
+  if (!filename) return "";
+  const dotIndex = filename.lastIndexOf(".");
+  if (dotIndex === -1) return "";
+  return filename.slice(dotIndex + 1).toLowerCase().trim();
 }
 
-export function isImageFile(file: File): boolean {
-  return file.type.startsWith("image/");
+export function isSupportedMediaType(mimeType: string, filename?: string): boolean {
+  if (mimeType) {
+    const normalized = mimeType.toLowerCase().trim();
+    if (SUPPORTED_IMAGE_TYPES.has(normalized) || SUPPORTED_VIDEO_TYPES.has(normalized)) {
+      return true;
+    }
+  }
+
+  // 모바일 환경 등에서 MIME 타입이 비어 있거나 application/octet-stream인 경우 확장자 보조 판별
+  if (filename) {
+    const ext = getFileExtension(filename);
+    if (SUPPORTED_IMAGE_EXTENSIONS.has(ext) || SUPPORTED_VIDEO_EXTENSIONS.has(ext)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
-export function isVideoFile(file: File): boolean {
-  return file.type.startsWith("video/");
+export function isImageFile(file: File | { name?: string; type?: string }): boolean {
+  if (file.type && file.type.startsWith("image/")) {
+    return true;
+  }
+  const ext = getFileExtension(file.name);
+  return SUPPORTED_IMAGE_EXTENSIONS.has(ext);
+}
+
+export function isVideoFile(file: File | { name?: string; type?: string }): boolean {
+  if (file.type && file.type.startsWith("video/")) {
+    return true;
+  }
+  const ext = getFileExtension(file.name);
+  return SUPPORTED_VIDEO_EXTENSIONS.has(ext);
 }
 
 /**
@@ -114,28 +159,60 @@ export async function optimizeImage(
       ctx.imageSmoothingQuality = "high";
       ctx.drawImage(img, 0, 0, width, height);
 
-      canvas.toBlob(
-        (blob) => {
-          if (!blob) {
-            resolve(file);
-            return;
-          }
+      // WebP 지원 여부 및 생성 실패 시 JPEG 폴백을 처리하는 toBlob 래퍼
+      const attemptBlobGeneration = (
+        targetMime: string,
+        onSuccess: (blob: Blob) => void,
+        onFail: () => void
+      ) => {
+        try {
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                onSuccess(blob);
+              } else {
+                onFail();
+              }
+            },
+            targetMime,
+            quality
+          );
+        } catch {
+          onFail();
+        }
+      };
 
-          // 압축 후 용량이 오히려 증가한 경우 원본 반환
-          if (blob.size >= file.size) {
-            resolve(file);
-            return;
-          }
+      const handleSuccess = (blob: Blob, usedMime: string) => {
+        // 압축 후 용량이 오히려 증가한 경우 원본 반환
+        if (blob.size >= file.size) {
+          resolve(file);
+          return;
+        }
 
-          const targetExt = mimeType === "image/webp" ? ".webp" : ".jpg";
-          const optimizedFile = new File([blob], file.name.replace(/\.[^/.]+$/, targetExt), {
-            type: mimeType,
-            lastModified: Date.now(),
-          });
-          resolve(optimizedFile);
-        },
+        const targetExt = usedMime === "image/webp" ? ".webp" : ".jpg";
+        const optimizedFile = new File([blob], file.name.replace(/\.[^/.]+$/, targetExt), {
+          type: usedMime,
+          lastModified: Date.now(),
+        });
+        resolve(optimizedFile);
+      };
+
+      // 1차 시도 (요청된 mimeType, 기본 image/webp)
+      attemptBlobGeneration(
         mimeType,
-        quality
+        (blob) => handleSuccess(blob, mimeType),
+        () => {
+          // mimeType이 webp였는데 실패한 경우 jpeg로 2차 폴백 시도
+          if (mimeType === "image/webp") {
+            attemptBlobGeneration(
+              "image/jpeg",
+              (blob) => handleSuccess(blob, "image/jpeg"),
+              () => resolve(file) // 둘 다 실패 시 원본 파일로 무중단 폴백
+            );
+          } else {
+            resolve(file);
+          }
+        }
       );
     };
 

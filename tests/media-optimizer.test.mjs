@@ -122,5 +122,32 @@ describe("소통피드 미디어 고도화 단위 테스트 (Issue #33)", () => 
     const result = await compressVideoIfNeeded(validFile);
     assert.equal(result.name, "valid_short.mp4");
   });
+
+  test("DoD 1 & DoD 2 (Issue #76): 모바일 환경 빈 MIME 타입, 대소문자 확장자 및 Graceful Fallback 검증", async () => {
+    const { isSupportedMediaType, isImageFile, isVideoFile } = await import("../src/lib/imageOptimizer.ts");
+
+    // 1. MIME 타입이 빈 문자열("")이거나 누락된 모바일 파일 확장자 보조 판별 검증
+    assert.equal(isSupportedMediaType("", "photo.jpg"), true, "빈 MIME이라도 .jpg 파일은 지원되어야 함");
+    assert.equal(isSupportedMediaType("", "IMG_1234.JPEG"), true, "대문자 .JPEG 확장자도 지원되어야 함");
+    assert.equal(isSupportedMediaType("", "photo.HEIC"), true, "모바일 .HEIC 확장자 지원되어야 함");
+    assert.equal(isSupportedMediaType("", "image.heif"), true, "모바일 .heif 확장자 지원되어야 함");
+    assert.equal(isSupportedMediaType("", "video.MOV"), true, "대문자 .MOV 비디오 확장자 지원되어야 함");
+    assert.equal(isSupportedMediaType("", "document.pdf"), false, ".pdf는 미지원되어야 함");
+    assert.equal(isSupportedMediaType("", ""), false, "MIME과 파일명 둘 다 없으면 false여야 함");
+
+    // 2. File 객체 기반 isImageFile / isVideoFile 검증 (MIME 빈값 및 대소문자 확장자 대응)
+    const emptyMimeImage = { name: "IMG_9999.HEIC", type: "", size: 1024 };
+    const emptyMimeVideo = { name: "VIDEO_0001.MOV", type: "", size: 1024 };
+    const normalMimeImage = { name: "test.png", type: "image/png", size: 1024 };
+    const normalMimeVideo = { name: "test.mp4", type: "video/mp4", size: 1024 };
+
+    assert.equal(isImageFile(emptyMimeImage), true, "MIME이 비어 있어도 .HEIC는 이미지로 판정되어야 함");
+    assert.equal(isImageFile(normalMimeImage), true, "일반 PNG 이미지는 이미지로 판정되어야 함");
+    assert.equal(isImageFile(emptyMimeVideo), false, "비디오 파일은 이미지가 아니어야 함");
+
+    assert.equal(isVideoFile(emptyMimeVideo), true, "MIME이 비어 있어도 .MOV는 비디오로 판정되어야 함");
+    assert.equal(isVideoFile(normalMimeVideo), true, "일반 MP4 비디오는 비디오로 판정되어야 함");
+    assert.equal(isVideoFile(emptyMimeImage), false, "이미지 파일은 비디오가 아니어야 함");
+  });
 });
 
