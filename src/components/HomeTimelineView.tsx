@@ -60,7 +60,7 @@ export function HomeTimelineView() {
           </span>
           <h2 className="text-lg font-black leading-tight">지금 여기, 주님이 함께!</h2>
           <p className="text-[11px] text-orange-100 leading-snug">
-            4대 테마존 부스에서 QR 스탬프 꾹! 도장을 모아 한정판 굿즈를 교환받으세요.
+            청년의 날 은혜로운 여정을 함께하며 이모저모 축제 이야기를 나눠보세요!
           </p>
           <div className="pt-1 flex items-center space-x-2">
             <Link
@@ -77,10 +77,10 @@ export function HomeTimelineView() {
               좌석 확인
             </Link>
             <Link
-              href="/stamp"
+              href="/feed"
               className="px-3 py-1.5 bg-black/20 text-white text-xs font-bold rounded-xl hover:bg-black/30 transition-colors"
             >
-              스탬프 북 ➔
+              이모저모 ➔
             </Link>
           </div>
         </div>

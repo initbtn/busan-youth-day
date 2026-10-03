@@ -48,6 +48,7 @@ import { useSearchParams } from "next/navigation";
 export function CommunityFeedView() {
   const searchParams = useSearchParams();
   const targetPostId = searchParams.get("postId");
+  const actionParam = searchParams.get("action");
   const { user } = useUser();
   const isKakaoSignedIn = !!(user && (user.email || user.provider === "kakao"));
   const [posts, setPosts] = useState<CommunityPost[]>(INITIAL_POSTS);
@@ -71,6 +72,18 @@ export function CommunityFeedView() {
   const [viewerMediaUrls, setViewerMediaUrls] = useState<string[]>([]);
   const [viewerIndex, setViewerIndex] = useState(0);
   const [viewerAuthor, setViewerAuthor] = useState<string | undefined>(undefined);
+
+  // action=write 쿼리 파라미터 처리: 글작성 모달 자동 열기
+  useEffect(() => {
+    if (actionParam === "write") {
+      if (isKakaoSignedIn) {
+        setIsUploadModalOpen(true);
+      } else {
+        alert("소통피드 글쓰기는 카카오 로그인이 필요합니다.");
+        signInWithKakao();
+      }
+    }
+  }, [actionParam, isKakaoSignedIn]);
 
   // 1. 컴포넌트 마운트 시: LocalStorage 오프라인 캐시(게시글 & 댓글) 즉시 복원 + Supabase 원격 피드 동기화
   useEffect(() => {
@@ -517,7 +530,7 @@ export function CommunityFeedView() {
                       <span className="text-[10px] font-normal text-slate-400">· {post.timeAgo || formatTimeAgo(post.createdAt)}</span>
                     </div>
                     <div className="text-[10px] text-blue-600 font-medium">
-                      부산 청년의날 BYD {post.parish} 모둠 · {post.role}
+                      {post.parish ? `${post.parish}성당` : "부산교구"} · {post.role}
                     </div>
                   </div>
                 </div>
@@ -709,7 +722,7 @@ export function CommunityFeedView() {
                     {user?.name || "참가자"}
                   </div>
                   <div className="text-[10px] text-slate-400">
-                    부산 청년의날 BYD {user?.parish || "부산"} 모둠 · {user?.role || "청년"}
+                    {user?.parish ? `${user.parish}성당` : "부산교구"} · {user?.saintGroup ? `${user.saintGroup} · ` : ""}{user?.role || "청년"}
                   </div>
                 </div>
               </div>

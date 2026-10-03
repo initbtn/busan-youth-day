@@ -33,7 +33,8 @@ import {
   formatTimeAgo,
 } from "@/lib/communityPosts";
 import { getYouthGroupMembers } from "@/data/youthGroupMembers";
-import { getPilgrimSaintById } from "@/data/saints";
+import { getPilgrimSaintById, PILGRIM_SAINTS } from "@/data/saints";
+import { DISTRICT_PARISH_MAP, AFFILIATION_ROLES, AffiliationRole } from "@/data/parishes";
 import { optimizeImage } from "@/lib/imageOptimizer";
 
 type ActiveTab = "profile" | "group" | "my_posts" | "my_comments";
@@ -48,6 +49,10 @@ export function MyProfileView() {
   const [name, setName] = useState(user?.name || "");
   const [baptismalName, setBaptismalName] = useState(user?.baptismalName || "");
   const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || "");
+  const [selectedDistrict, setSelectedDistrict] = useState(user?.district || "하단지구");
+  const [selectedParish, setSelectedParish] = useState(user?.parish || "하단");
+  const [selectedRole, setSelectedRole] = useState<AffiliationRole>(user?.role || "청년");
+  const [selectedSaintId, setSelectedSaintId] = useState(user?.pilgrimSaint?.id || "andrew-kim-taegon");
   const [isSaved, setIsSaved] = useState(false);
 
   // 내 게시글 & 댓글 상태
@@ -58,7 +63,7 @@ export function MyProfileView() {
   const [editImageUrl, setEditImageUrl] = useState("");
 
   // 모둠원 목록 상태
-  const saintId = user?.pilgrimSaint?.id || "andrew-kim-taegon";
+  const saintId = user?.pilgrimSaint?.id || selectedSaintId;
   const currentSaint = getPilgrimSaintById(saintId);
   const groupMembers = getYouthGroupMembers(saintId);
 
@@ -67,6 +72,10 @@ export function MyProfileView() {
       setName(user.name || "");
       setBaptismalName(user.baptismalName || "");
       setAvatarUrl(user.avatarUrl || "");
+      if (user.district) setSelectedDistrict(user.district);
+      if (user.parish) setSelectedParish(user.parish);
+      if (user.role) setSelectedRole(user.role);
+      if (user.pilgrimSaint?.id) setSelectedSaintId(user.pilgrimSaint.id);
     }
   }, [user]);
 
@@ -86,11 +95,25 @@ export function MyProfileView() {
     e.preventDefault();
     if (!user) return;
 
+    const chosenSaint = getPilgrimSaintById(selectedSaintId);
     const updated: UserProfile = {
       ...user,
       name: name.trim() || user.name,
       baptismalName: baptismalName.trim(),
       avatarUrl: avatarUrl.trim(),
+      district: selectedDistrict,
+      parish: selectedParish,
+      role: selectedRole,
+      pilgrimSaint: chosenSaint
+        ? {
+            id: chosenSaint.id,
+            name: chosenSaint.name,
+            groupName: chosenSaint.groupName,
+          }
+        : user.pilgrimSaint,
+      saintGroup: chosenSaint?.groupName || user.saintGroup,
+      saintName: chosenSaint?.name || user.saintName,
+      pilgrimageGroup: chosenSaint?.groupName || user.pilgrimageGroup,
     };
 
     setUserProfile(updated);
@@ -318,23 +341,106 @@ export function MyProfileView() {
               />
             </div>
 
-            {/* 지구/본당 및 소속 역할 (안내) */}
+            {/* 소속 교구 지구 및 본당 선택 드롭다운 */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  소속 지구
+                </label>
+                <select
+                  value={selectedDistrict}
+                  onChange={(e) => {
+                    const newDistrict = e.target.value;
+                    setSelectedDistrict(newDistrict);
+                    const parishes = DISTRICT_PARISH_MAP.find((d) => d.district === newDistrict)?.parishes || [];
+                    if (parishes.length > 0) {
+                      setSelectedParish(parishes[0]);
+                    }
+                  }}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 text-xs font-medium"
+                >
+                  {DISTRICT_PARISH_MAP.map((d) => (
+                    <option key={d.district} value={d.district}>
+                      {d.district}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  소속 본당
+                </label>
+                <select
+                  value={selectedParish}
+                  onChange={(e) => setSelectedParish(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 text-xs font-medium"
+                >
+                  {(DISTRICT_PARISH_MAP.find((d) => d.district === selectedDistrict)?.parishes || []).map((p) => (
+                    <option key={p} value={p}>
+                      {p}성당
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* 소속 역할 및 수호성인 모둠 선택 */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  소속 역할
+                </label>
+                <select
+                  value={selectedRole}
+                  onChange={(e) => setSelectedRole(e.target.value as AffiliationRole)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 text-xs font-medium"
+                >
+                  {AFFILIATION_ROLES.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  청년의 날 모둠
+                </label>
+                <select
+                  value={selectedSaintId}
+                  onChange={(e) => setSelectedSaintId(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 text-xs font-medium"
+                >
+                  {PILGRIM_SAINTS.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.groupName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* 현재 소속 요약 뱃지 */}
             <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 text-[11px] text-slate-600 space-y-1">
               <div className="flex justify-between">
                 <span className="font-semibold text-slate-500">소속 교구/지구:</span>
-                <span className="font-bold text-slate-800">부산교구 · {user?.district || "하단지구"}</span>
+                <span className="font-bold text-slate-800">부산교구 · {selectedDistrict}</span>
               </div>
               <div className="flex justify-between">
                 <span className="font-semibold text-slate-500">소속 본당:</span>
-                <span className="font-bold text-slate-800">{user?.parish ? `${user.parish}성당` : "미배정"}</span>
+                <span className="font-bold text-slate-800">{selectedParish ? `${selectedParish}성당` : "미배정"}</span>
               </div>
               <div className="flex justify-between">
                 <span className="font-semibold text-slate-500">청년의 날 모둠:</span>
-                <span className="font-bold text-orange-600">{user?.saintGroup || (currentSaint ? currentSaint.groupName : "김대건 안드레아 모둠")}</span>
+                <span className="font-bold text-orange-600">
+                  {getPilgrimSaintById(selectedSaintId)?.groupName || "김대건 안드레아 모둠"}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="font-semibold text-slate-500">소속 역할:</span>
-                <span className="font-bold text-slate-800">{user?.role || "청년"}</span>
+                <span className="font-bold text-slate-800">{selectedRole}</span>
               </div>
             </div>
 
@@ -435,44 +541,53 @@ export function MyProfileView() {
                 </div>
               )}
 
-              {/* 다른 모둠원 목록 */}
-              {groupMembers.map((member) => (
-                <div key={member.id} className="py-2.5 flex items-center justify-between">
-                  <div className="flex items-center space-x-2.5">
-                    <div className="w-8 h-8 rounded-full overflow-hidden border border-slate-100 bg-slate-50 flex items-center justify-center">
-                      <Image
-                        src={member.avatarUrl || "/assets/characters/jjuyang2.png"}
-                        alt={member.name}
-                        width={24}
-                        height={24}
-                        className="object-contain"
-                      />
-                    </div>
-                    <div>
-                      <div className="flex items-center space-x-1.5">
-                        <span className="font-bold text-slate-800">{member.name}</span>
-                        {member.baptismalName && (
-                          <span className="text-[10px] text-slate-500 font-semibold">
-                            ({member.baptismalName})
-                          </span>
-                        )}
-                        <span className="text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded font-medium">
-                          {member.parish}
-                        </span>
-                      </div>
-                      {member.motto && (
-                        <p className="text-[10px] text-slate-500 italic mt-0.5 truncate max-w-[200px]">
-                          &ldquo;{member.motto}&rdquo;
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  <span className="text-[10px] text-slate-400 font-medium">
-                    {member.role}
-                  </span>
+              {/* 다른 모둠원 목록 (등록된 다른 모둠원이 없을 때 빈 상태 안내) */}
+              {groupMembers.length === 0 ? (
+                <div className="py-6 text-center space-y-1.5 bg-slate-50/50 rounded-2xl my-2">
+                  <p className="text-xs font-bold text-slate-600">등록된 모둠원이 아직 없습니다.</p>
+                  <p className="text-[10px] text-slate-400">
+                    같은 수호성인 모둠으로 참가자들이 등록하면 여기에 자동으로 표시됩니다.
+                  </p>
                 </div>
-              ))}
+              ) : (
+                groupMembers.map((member) => (
+                  <div key={member.id} className="py-2.5 flex items-center justify-between">
+                    <div className="flex items-center space-x-2.5">
+                      <div className="w-8 h-8 rounded-full overflow-hidden border border-slate-100 bg-slate-50 flex items-center justify-center">
+                        <Image
+                          src={member.avatarUrl || "/assets/characters/jjuyang2.png"}
+                          alt={member.name}
+                          width={24}
+                          height={24}
+                          className="object-contain"
+                        />
+                      </div>
+                      <div>
+                        <div className="flex items-center space-x-1.5">
+                          <span className="font-bold text-slate-800">{member.name}</span>
+                          {member.baptismalName && (
+                            <span className="text-[10px] text-slate-500 font-semibold">
+                              ({member.baptismalName})
+                            </span>
+                          )}
+                          <span className="text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded font-medium">
+                            {member.parish}
+                          </span>
+                        </div>
+                        {member.motto && (
+                          <p className="text-[10px] text-slate-500 italic mt-0.5 truncate max-w-[200px]">
+                            &ldquo;{member.motto}&rdquo;
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <span className="text-[10px] text-slate-400 font-medium">
+                      {member.role}
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
