@@ -93,16 +93,6 @@ function TabsLayoutContent({
       {/* 메인 뷰 컨텐츠 ({children}) */}
       <main className="max-w-md mx-auto p-4 space-y-5 w-full flex-1">
         {children}
-
-        {/* 공통 하단 필수 저작권 표기 */}
-        <footer className="pt-4 pb-2 text-center space-y-1">
-          <p className="text-[11px] font-bold text-slate-500">
-            ⓒ 부산교구 청소년사목국 · 2026 BYD
-          </p>
-          <p className="text-[9px] text-slate-400">
-            공식 마스코트 쭈양이(JJUYANG!) · 문의: purunnamu@catb.kr
-          </p>
-        </footer>
       </main>
 
       {/* 하단 고정 네비게이션 바 (Persistent Bottom Nav) */}
