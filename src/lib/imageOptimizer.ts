@@ -85,6 +85,41 @@ export function isVideoFile(file: File | { name?: string; type?: string }): bool
 }
 
 /**
+ * 모바일 환경에서 파일의 type이 빈 문자열이거나 부정확할 때,
+ * 파일 확장자를 기반으로 올바른 Content-Type을 추론합니다.
+ */
+export function resolveEffectiveMimeType(file: { name?: string; type?: string }): string {
+  if (file.type && file.type !== "application/octet-stream") {
+    return file.type;
+  }
+
+  const ext = getFileExtension(file.name);
+  switch (ext) {
+    case "jpg":
+    case "jpeg":
+      return "image/jpeg";
+    case "png":
+      return "image/png";
+    case "webp":
+      return "image/webp";
+    case "gif":
+      return "image/gif";
+    case "heic":
+    case "heif":
+      return "image/heic";
+    case "mp4":
+      return "video/mp4";
+    case "webm":
+      return "video/webm";
+    case "mov":
+    case "quicktime":
+      return "video/quicktime";
+    default:
+      return file.type || "application/octet-stream";
+  }
+}
+
+/**
  * 장변(maxDimension) 기준 비율 유지 리사이즈 계산
  */
 export function calculateTargetDimensions(
@@ -125,7 +160,12 @@ export async function optimizeImage(
   const { maxDimension = 1920, quality = 0.85, mimeType = "image/webp" } = options;
 
   // SSR 환경이거나 애니메이션 GIF인 경우 원본 반환
-  if (typeof window === "undefined" || typeof document === "undefined" || file.type === "image/gif") {
+  if (
+    typeof window === "undefined" ||
+    typeof document === "undefined" ||
+    file.type === "image/gif" ||
+    getFileExtension(file.name) === "gif"
+  ) {
     return file;
   }
 
@@ -168,7 +208,8 @@ export async function optimizeImage(
         try {
           canvas.toBlob(
             (blob) => {
-              if (blob) {
+              // 브라우저가 targetMime 미지원으로 PNG 등 엉뚱한 타입을 반환했거나 null인 경우 실패 처리
+              if (blob && (!blob.type || blob.type === targetMime)) {
                 onSuccess(blob);
               } else {
                 onFail();

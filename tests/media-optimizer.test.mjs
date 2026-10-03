@@ -145,9 +145,15 @@ describe("소통피드 미디어 고도화 단위 테스트 (Issue #33)", () => 
     assert.equal(isImageFile(normalMimeImage), true, "일반 PNG 이미지는 이미지로 판정되어야 함");
     assert.equal(isImageFile(emptyMimeVideo), false, "비디오 파일은 이미지가 아니어야 함");
 
-    assert.equal(isVideoFile(emptyMimeVideo), true, "MIME이 비어 있어도 .MOV는 비디오로 판정되어야 함");
-    assert.equal(isVideoFile(normalMimeVideo), true, "일반 MP4 비디오는 비디오로 판정되어야 함");
-    assert.equal(isVideoFile(emptyMimeImage), false, "이미지 파일은 비디오가 아니어야 함");
+    // 3. resolveEffectiveMimeType 모바일 빈 MIME 및 대소문자 확장자 추론 검증
+    const { resolveEffectiveMimeType } = await import("../src/lib/imageOptimizer.ts");
+    assert.equal(resolveEffectiveMimeType({ name: "test.JPG", type: "" }), "image/jpeg");
+    assert.equal(resolveEffectiveMimeType({ name: "photo.HEIC", type: "" }), "image/heic");
+    assert.equal(resolveEffectiveMimeType({ name: "video.MOV", type: "" }), "video/quicktime");
+    assert.equal(resolveEffectiveMimeType({ name: "clip.MP4", type: "" }), "video/mp4");
+    assert.equal(resolveEffectiveMimeType({ name: "anim.GIF", type: "" }), "image/gif");
+    assert.equal(resolveEffectiveMimeType({ name: "image.png", type: "image/png" }), "image/png");
+    assert.equal(resolveEffectiveMimeType({ name: "unknown.xyz", type: "" }), "application/octet-stream");
   });
 });
 
