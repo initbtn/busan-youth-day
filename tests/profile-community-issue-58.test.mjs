@@ -47,21 +47,18 @@ describe("마이페이지 프로필 수정, 청년의 날 모둠원 조회, 내 
   });
 
   test("DoD 2: 2027 서울 WYD 5인 수호성인 청년의 날 모둠 및 모둠원 명단 조회 모듈 검증", async () => {
-    const { getPilgrimSaintById, PILGRIM_SAINTS } = await import("../src/data/saints.ts");
+    const { PILGRIM_SAINTS } = await import("../src/data/saints.ts");
     const { getYouthGroupMembers, YOUTH_GROUP_MEMBERS } = await import("../src/data/youthGroupMembers.ts");
 
     assert.equal(PILGRIM_SAINTS.length, 5, "2027 WYD 5인 수호성인이 정의되어 있어야 합니다.");
-    
-    // 5인 성인 각각에 대해 모둠원 조회가 가능해야 함
+    assert.ok(Array.isArray(YOUTH_GROUP_MEMBERS), "모둠원 데이터는 배열이어야 합니다.");
+    assert.equal(YOUTH_GROUP_MEMBERS.length, 0, "샘플 목 데이터는 제거되어 빈 배열이어야 합니다 (Issue #64).");
+
+    // 5인 성인 각각에 대해 모둠원 조회가 배열을 정상 반환해야 함
     PILGRIM_SAINTS.forEach((saint) => {
       const members = getYouthGroupMembers(saint.id);
       assert.ok(Array.isArray(members), `${saint.name} 모둠의 모둠원 목록이 배열이어야 합니다.`);
-      assert.ok(members.length > 0, `${saint.name} 모둠에 배정된 청년(모둠원)이 최소 1명 이상 존재해야 합니다.`);
-      members.forEach((m) => {
-        assert.ok(m.name, "모둠원 이름이 있어야 합니다.");
-        assert.ok(m.parish, "모둠원 본당 정보가 있어야 합니다.");
-        assert.ok(m.saintId === saint.id, "모둠원 saintId가 일치해야 합니다.");
-      });
+      assert.equal(members.length, 0, "초기 모둠원은 0명이어야 합니다.");
     });
   });
 

@@ -9,10 +9,9 @@ import { OnboardingModal } from "@/components/OnboardingModal";
 import {
   MapPin,
   Compass,
-  QrCode,
   Users,
-  Info,
   Map,
+  PlusCircle,
 } from "lucide-react";
 
 function TabsLayoutContent({
@@ -35,10 +34,9 @@ function TabsLayoutContent({
 
   // 활성 탭 판별
   const isHome = pathname === "/" || pathname === "";
-  const isStamp = pathname.startsWith("/stamp");
-  const isSeating = pathname.startsWith("/seating");
+  const isMap = pathname.startsWith("/map");
   const isFeed = pathname.startsWith("/feed");
-  const isInfo = pathname.startsWith("/info");
+  const isSeating = pathname.startsWith("/seating");
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-24 flex flex-col">
@@ -47,21 +45,6 @@ function TabsLayoutContent({
         <div className="flex items-center space-x-1.5 truncate">
           <span className="bg-white/20 px-1.5 py-0.5 rounded text-[10px] font-bold">안내</span>
           <span className="truncate">스포원파크 부스 QR 스캔하고 현장 굿즈 교환받자! 🍞🐟</span>
-        </div>
-        <div className="flex items-center space-x-1 flex-shrink-0 ml-2">
-          <Link
-            href="/map"
-            className="text-[11px] underline font-bold bg-black/10 px-2 py-0.5 rounded-full flex items-center space-x-0.5"
-          >
-            <Map className="w-3 h-3 inline mr-0.5" />
-            <span>현장지도</span>
-          </Link>
-          <Link
-            href="/seating"
-            className="text-[11px] underline font-bold bg-black/10 px-2 py-0.5 rounded-full"
-          >
-            좌석배치
-          </Link>
         </div>
       </div>
 
@@ -132,17 +115,37 @@ function TabsLayoutContent({
             }`}
           >
             <Compass className="w-5 h-5" />
-            <span>홈</span>
+            <span>메인</span>
           </Link>
 
           <Link
-            href="/stamp"
+            href="/map"
             className={`flex flex-col items-center space-y-1 text-[11px] font-semibold transition-colors ${
-              isStamp ? "text-orange-600" : "text-slate-400 hover:text-slate-600"
+              isMap ? "text-orange-600" : "text-slate-400 hover:text-slate-600"
             }`}
           >
-            <QrCode className="w-5 h-5" />
-            <span>스탬프</span>
+            <Map className="w-5 h-5" />
+            <span>지도</span>
+          </Link>
+
+          <Link
+            href="/feed?action=write"
+            className="flex flex-col items-center space-y-1 text-[11px] font-semibold text-slate-400 hover:text-orange-600 transition-colors"
+          >
+            <div className="p-1 -mt-1 rounded-full bg-orange-500 text-white shadow-sm flex items-center justify-center">
+              <PlusCircle className="w-5 h-5" />
+            </div>
+            <span>새글작성</span>
+          </Link>
+
+          <Link
+            href="/feed"
+            className={`flex flex-col items-center space-y-1 text-[11px] font-semibold transition-colors ${
+              isFeed ? "text-orange-600" : "text-slate-400 hover:text-slate-600"
+            }`}
+          >
+            <Users className="w-5 h-5" />
+            <span>이모저모</span>
           </Link>
 
           <Link
@@ -155,27 +158,7 @@ function TabsLayoutContent({
               <MapPin className="w-5 h-5" />
               <span className="absolute -top-1 -right-1 w-2 h-2 bg-orange-500 rounded-full animate-pulse" />
             </div>
-            <span>미사좌석</span>
-          </Link>
-
-          <Link
-            href="/feed"
-            className={`flex flex-col items-center space-y-1 text-[11px] font-semibold transition-colors ${
-              isFeed ? "text-orange-600" : "text-slate-400 hover:text-slate-600"
-            }`}
-          >
-            <Users className="w-5 h-5" />
-            <span>소통피드</span>
-          </Link>
-
-          <Link
-            href="/info"
-            className={`flex flex-col items-center space-y-1 text-[11px] font-semibold transition-colors ${
-              isInfo ? "text-orange-600" : "text-slate-400 hover:text-slate-600"
-            }`}
-          >
-            <Info className="w-5 h-5" />
-            <span>안내</span>
+            <span>미사안내</span>
           </Link>
         </div>
       </nav>

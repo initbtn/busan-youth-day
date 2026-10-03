@@ -30,12 +30,12 @@ describe("Next.js App Router Route Groups (tabs) 파일 및 아키텍처 계약 
     assert.ok(fs.existsSync(layoutPath), "layout.tsx가 존재해야 합니다.");
     const content = fs.readFileSync(layoutPath, "utf-8");
 
-    // 1. 하단 5대 서브 라우트 링크 존재 여부
-    assert.ok(content.includes('href="/"') || content.includes("href='/'"), "홈 링크('/')가 있어야 합니다.");
-    assert.ok(content.includes('href="/stamp"'), "스탬프 링크('/stamp')가 있어야 합니다.");
-    assert.ok(content.includes('href="/seating"'), "미사좌석 링크('/seating')가 있어야 합니다.");
-    assert.ok(content.includes('href="/feed"'), "소통피드 링크('/feed')가 있어야 합니다.");
-    assert.ok(content.includes('href="/info"'), "안내 링크('/info')가 있어야 합니다.");
+    // 1. 하단 5대 서브 라우트 링크 존재 여부 (Issue #64: 메인, 지도, 새글작성, 이모저모, 미사안내)
+    assert.ok(content.includes('href="/"') || content.includes("href='/'"), "홈/메인 링크('/')가 있어야 합니다.");
+    assert.ok(content.includes('href="/map"'), "지도 링크('/map')가 있어야 합니다.");
+    assert.ok(content.includes('href="/feed?action=write"'), "새글작성 링크('/feed?action=write')가 있어야 합니다.");
+    assert.ok(content.includes('href="/feed"'), "이모저모/소통피드 링크('/feed')가 있어야 합니다.");
+    assert.ok(content.includes('href="/seating"'), "미사안내/좌석 링크('/seating')가 있어야 합니다.");
 
     // 2. URL 경로 동기화를 위한 usePathname 사용 여부
     assert.ok(content.includes("usePathname"), "URL 활성 상태 동기화를 위해 usePathname을 사용해야 합니다.");
