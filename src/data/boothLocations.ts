@@ -16,6 +16,8 @@ export interface MapPoint {
   isSacrament?: boolean;
   sacramentType?: string;
   tag?: string;
+  photoUrl?: string;
+  photoTitle?: string;
 }
 
 // 스포원파크 중심 좌표 (수변공원 / 야외 분수광장)
@@ -27,13 +29,35 @@ export const SPOWON_CENTER = {
 // 주요 행사장 거점 & 시설 (카카오 로컬 공식 실측 좌표)
 const FACILITIES_AND_STAGES: MapPoint[] = [
   {
+    id: "facility-reception",
+    name: "본당 등록 및 접수처",
+    category: "facility",
+    lat: 35.293450,
+    lng: 129.104850,
+    description: "스포원 북측 주차장 방면 실내체육관 입구 접수대 (09:00~14:00 운영, 인솔대표 접수 후 교환권 수령)",
+    tag: "접수처",
+    photoUrl: "/assets/reception_desk.webp",
+    photoTitle: "스포원 북측 실내체육관 입구 본당 접수대 현장 사진",
+  },
+  {
+    id: "facility-package-pickup",
+    name: "참가자 패키지 수령처",
+    category: "facility",
+    lat: 35.293150,
+    lng: 129.104400,
+    description: "접수대에서 수령한 패키지 교환권으로 참가자 패키지 및 굿즈 수령 (에나버거/키즈랜드 광장 방면)",
+    tag: "패키지수령처",
+    photoUrl: "/assets/package_pickup.webp",
+    photoTitle: "스포원 참가자 패키지 배부처 현장 사진",
+  },
+  {
     id: "facility-main-square",
     name: "A구역 · 야외 분수광장 (수변공원 부스존)",
     category: "facility",
     lat: 35.291961,
     lng: 129.105222,
     description: "4대 테마존 81개 공식 부스, 안내소, 의료지원 및 상품 수령처 운영",
-    tag: "메인 광장",
+    tag: "A구역 부스존",
   },
   {
     id: "stage-gym",
@@ -42,7 +66,7 @@ const FACILITIES_AND_STAGES: MapPoint[] = [
     lat: 35.293054,
     lng: 129.104745,
     description: "12:00 개방 무대공연, 1F 문화홀 지성소 성체조배, 16:30 BYD 파견미사",
-    tag: "실내체육관",
+    tag: "B구역 실내체육관",
   },
   {
     id: "stage-outdoor",
@@ -51,7 +75,7 @@ const FACILITIES_AND_STAGES: MapPoint[] = [
     lat: 35.292723,
     lng: 129.103672,
     description: "청년 버스킹 문화공연, 상설 고해소(13:30~15:30) 운영",
-    tag: "가족공원",
+    tag: "C구역 야외무대",
   },
   {
     id: "facility-tennis-stadium",
@@ -59,7 +83,7 @@ const FACILITIES_AND_STAGES: MapPoint[] = [
     category: "facility",
     lat: 35.292953,
     lng: 129.105999,
-    description: "스포원파크 테니스경기장 및 실내 편의시설",
+    description: "스포원파크 테니스경기장 및 실내 편의시설 (화장실 외 출입금지)",
     tag: "테니스경기장",
   },
   {
@@ -68,7 +92,7 @@ const FACILITIES_AND_STAGES: MapPoint[] = [
     category: "facility",
     lat: 35.291489,
     lng: 129.106735,
-    description: "스포원파크 동남측 야외 테니스 코트 구역",
+    description: "스포원파크 동남측 야외 테니스 코트 구역 (화장실 외 출입금지)",
     tag: "테니스장",
   },
   {
@@ -77,8 +101,8 @@ const FACILITIES_AND_STAGES: MapPoint[] = [
     category: "facility",
     lat: 35.293800,
     lng: 129.104900,
-    description: "노포역 ↔ 스포원파크 15분 간격 무료 셔틀버스 승하차장 및 지구별 접수대",
-    tag: "셔틀/접수",
+    description: "노포역 ↔ 스포원파크 15분 간격 무료 셔틀버스 승하차장",
+    tag: "셔틀버스",
   },
   {
     id: "facility-west-gate",
@@ -96,7 +120,7 @@ const FACILITIES_AND_STAGES: MapPoint[] = [
     lat: 35.291800,
     lng: 129.105050,
     description: "스탬프 완주 기념 굿즈 교환 및 미션북 선물 수령처",
-    tag: "상품수령",
+    tag: "상품수령처",
   },
 ];
 

@@ -36,9 +36,16 @@ declare global {
 interface KakaoMapViewProps {
   initialSelectedId?: string;
   onSelectPoint?: (point: MapPoint) => void;
+  onSelectZone?: (zoneId: "faith" | "hope" | "love" | "sharing") => void;
+  onSelectStageTab?: (stageType: "indoor" | "outdoor" | "holies") => void;
 }
 
-export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewProps) {
+export function KakaoMapView({
+  initialSelectedId,
+  onSelectPoint,
+  onSelectZone,
+  onSelectStageTab,
+}: KakaoMapViewProps) {
   const router = useRouter();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -57,6 +64,7 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [isBoothModalOpen, setIsBoothModalOpen] = useState(false);
   const [boothModalInitialZone, setBoothModalInitialZone] = useState<"faith" | "hope" | "love" | "sharing" | "all">("all");
+  const [photoModal, setPhotoModal] = useState<{ url: string; title: string; desc?: string } | null>(null);
 
   const apiKey = process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY;
 
@@ -397,11 +405,52 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
     );
   };
 
-  // 부스 상세페이지 또는 부스 목록으로 이동 (거점 시설은 안내 알림)
+  // 부스 상세페이지 또는 부스 목록으로 이동 (거점 시설은 안내 알림 또는 사진 모달)
   const handleOpenBoothDetail = (point: MapPoint) => {
+    // 1. 접수처 / 패키지수령처 등 현장 실물 사진이 등록된 거점
+    if (point.photoUrl) {
+      setPhotoModal({
+        url: point.photoUrl,
+        title: point.photoTitle || point.name,
+        desc: point.description,
+      });
+      return;
+    }
+
+    // 2. B구역 실내체육관 또는 C구역 야외무대 선택 시 무대 일정 연동
+    if (point.id === "stage-gym" || point.id.includes("gym")) {
+      if (onSelectStageTab) {
+        onSelectStageTab("indoor");
+      } else {
+        router.push("/map?tab=stages&target=indoor");
+      }
+      return;
+    }
+
+    if (point.id === "stage-outdoor" || point.id.includes("outdoor")) {
+      if (onSelectStageTab) {
+        onSelectStageTab("outdoor");
+      } else {
+        router.push("/map?tab=stages&target=outdoor");
+      }
+      return;
+    }
+
+    if (point.id === "facility-main-square") {
+      if (onSelectZone) {
+        onSelectZone("faith");
+      } else {
+        router.push("/map?tab=booths&zone=faith");
+      }
+      return;
+    }
+
     if (point.zoneId && point.boothNumber) {
       router.push(`/booth/${point.zoneId}-${point.boothNumber}`);
     } else if (point.zoneId) {
+      if (onSelectZone) {
+        onSelectZone(point.zoneId as "faith" | "hope" | "love" | "sharing");
+      }
       setBoothModalInitialZone(point.zoneId as "faith" | "hope" | "love" | "sharing");
       setIsBoothModalOpen(true);
     } else {
@@ -478,6 +527,19 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
             <Layers className="w-4 h-4" />
           </button>
           <button
+            onClick={() => {
+              setPhotoModal({
+                url: "/assets/spowon_clean_map.webp",
+                title: "스포원파크 행사장 전체 배치 지도",
+                desc: "북측 접수대부터 실내체육관, 가족공원 야외무대, 수변공원 4대 테마존 부스 전역 안내도입니다.",
+              });
+            }}
+            className="p-2.5 bg-white/95 backdrop-blur-md rounded-2xl shadow-md border border-slate-200/80 text-orange-600 hover:bg-orange-50 transition-colors"
+            title="정제 행사장 지도 원본 보기"
+          >
+            <span className="text-xs font-black">🗺️</span>
+          </button>
+          <button
             onClick={handleLocateMe}
             disabled={isLocating}
             className={`p-2.5 bg-white/95 backdrop-blur-md rounded-2xl shadow-md border border-slate-200/80 transition-colors ${
@@ -516,30 +578,44 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
               <p className="text-[11px] text-amber-800 leading-snug">{loadError}</p>
             </div>
 
-            {/* 스포원파크 4대 방위 테마존 정적 배치도 폴백 */}
+            {/* 스포원파크 정제 클린 지도 뷰어 */}
             <div className="bg-white rounded-2xl p-3 border border-slate-200 shadow-xs flex-1 flex flex-col justify-between">
               <div className="text-center pb-2 border-b border-slate-100">
                 <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
-                  스포원파크 야외 분수광장 현장 배치도
+                  스포원파크 현장 정제 지도
                 </span>
-                <p className="text-xs font-black text-slate-800 mt-1">중앙 분수대를 중심으로 4대 테마존 배치</p>
+                <p className="text-xs font-black text-slate-800 mt-1">스포원파크 행사장 전체 배치도</p>
+              </div>
+
+              <div className="relative my-2 rounded-xl overflow-hidden border border-slate-200">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/assets/spowon_clean_map.webp"
+                  alt="스포원파크 정제 지도"
+                  className="w-full h-auto object-contain max-h-[220px]"
+                />
               </div>
 
               {/* 4방위 테마존 미니 맵 블록 */}
-              <div className="grid grid-cols-2 gap-2 my-3">
+              <div className="grid grid-cols-2 gap-2 my-2">
                 {FOUNTAIN_ZONE_BLOCKS.map((block) => (
                   <div
                     key={block.direction}
-                    className="p-2.5 rounded-xl border border-slate-100 shadow-2xs flex flex-col justify-between"
+                    onClick={() => {
+                      if (onSelectZone) onSelectZone(block.zoneId);
+                      setBoothModalInitialZone(block.zoneId);
+                      setIsBoothModalOpen(true);
+                    }}
+                    className="p-2.5 rounded-xl border border-slate-100 shadow-2xs flex flex-col justify-between cursor-pointer hover:opacity-90 active:scale-98 transition-all"
                     style={{ backgroundColor: `${block.color}15` }}
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-slate-800">{block.koreanName}</span>
                       <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-white text-slate-600">
-                        {block.direction === "north" && "북측 (재난대피소 앞)"}
-                        {block.direction === "south" && "남측 (실내체육관 방면)"}
-                        {block.direction === "east" && "동측 (가족공원 입구)"}
-                        {block.direction === "west" && "서측 (경륜장 방면)"}
+                        {block.direction === "north" && "북측 (재난대피소)"}
+                        {block.direction === "south" && "남측 (실내체육관)"}
+                        {block.direction === "east" && "동측 (가족공원)"}
+                        {block.direction === "west" && "서측 (경륜장)"}
                       </span>
                     </div>
                     <p className="text-[10px] text-slate-600 mt-1">{block.description}</p>
@@ -596,6 +672,7 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
               </span>
               <button
                 onClick={() => {
+                  if (onSelectZone) onSelectZone(selectedBlock.zoneId);
                   setBoothModalInitialZone(selectedBlock.zoneId);
                   setIsBoothModalOpen(true);
                 }}
@@ -646,6 +723,11 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
                     부스 {selectedPoint.boothNumber}번
                   </span>
                 )}
+                {selectedPoint.photoUrl && (
+                  <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                    📸 현장 사진 지원
+                  </span>
+                )}
               </div>
               <h4 className="text-sm font-black text-slate-900 leading-tight">
                 {selectedPoint.name}
@@ -665,9 +747,17 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
 
           <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between">
             <span className="text-[10px] text-slate-400 font-medium">
-              📍 스포원파크 분수광장 거점
+              📍 스포원파크 행사장 거점
             </span>
-            {selectedPoint.zoneId ? (
+            {selectedPoint.photoUrl ? (
+              <button
+                onClick={() => handleOpenBoothDetail(selectedPoint)}
+                className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95"
+              >
+                <span>현장 실물 사진 보기</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            ) : selectedPoint.zoneId ? (
               <button
                 onClick={() => handleOpenBoothDetail(selectedPoint)}
                 className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95"
@@ -680,7 +770,7 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
                 onClick={() => handleOpenBoothDetail(selectedPoint)}
                 className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-slate-700 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95"
               >
-                <span>시설 안내 보기</span>
+                <span>안내 보기</span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
             )}
@@ -694,7 +784,6 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
         onClose={() => setIsBoothModalOpen(false)}
         initialZoneId={boothModalInitialZone}
         onSelectBooth={(booth) => {
-          // 1. 7성사 부스인 경우 전용 정밀 좌표(SPOWON_MAP_POINTS의 sacrament) 매핑
           const sacramentPoint = booth.isSacrament
             ? SPOWON_MAP_POINTS.find(
                 (p) =>
@@ -704,7 +793,6 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
               )
             : null;
 
-          // 2. 일반 부스인 경우 해당 구역(zone) 대표 좌표 매핑
           const zonePoint = SPOWON_MAP_POINTS.find(
             (p) => p.category === "zone" && p.zoneId === booth.zoneId
           );
@@ -728,6 +816,48 @@ export function KakaoMapView({ initialSelectedId, onSelectPoint }: KakaoMapViewP
           handleSelectPoint(point);
         }}
       />
+
+      {/* 5. 접수처 / 패키지수령처 / 클린 지도 현장 사진 팝업 모달 */}
+      {photoModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[90vh]">
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div>
+                <h3 className="text-sm font-black text-slate-900">{photoModal.title}</h3>
+                {photoModal.desc && (
+                  <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-1">{photoModal.desc}</p>
+                )}
+              </div>
+              <button
+                onClick={() => setPhotoModal(null)}
+                className="p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
+                aria-label="닫기"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-3 bg-slate-900 flex items-center justify-center overflow-auto max-h-[65vh]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={photoModal.url}
+                alt={photoModal.title}
+                className="w-full h-auto max-h-[60vh] object-contain rounded-xl shadow-lg"
+              />
+            </div>
+
+            <div className="p-3.5 bg-white border-t border-slate-100 flex items-center justify-between">
+              <span className="text-[11px] text-slate-400">2026 교구 청년의 날 공식 안내</span>
+              <button
+                onClick={() => setPhotoModal(null)}
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
+              >
+                확인
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
