@@ -1,19 +1,76 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, Suspense, useRef } from "react";
 import Link from "next/link";
-import { ArrowLeft, Music, Sparkles, ChevronRight } from "lucide-react";
+import { useSearchParams, useRouter } from "next/navigation";
+import {
+  ArrowLeft,
+  Music,
+  Sparkles,
+  ChevronRight,
+  ChevronLeft,
+  Church,
+  ShieldAlert,
+} from "lucide-react";
 import { KakaoMapView } from "@/components/KakaoMapView";
 import { OFFICIAL_ZONES, ZoneData } from "@/data/officialBooths";
 import { INDOOR_STAGE_PROGRAMS, OUTDOOR_STAGE_PROGRAMS } from "@/data/stageSchedule";
+import { HOLIES_SCHEDULE } from "@/data/holiesSchedule";
 
 type ZoneId = ZoneData["id"];
 
-export default function MapPage() {
+function MapPageContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  const tabParam = searchParams.get("tab");
+  const zoneParam = searchParams.get("zone");
+  const targetParam = searchParams.get("target");
+
   const [activeTab, setActiveTab] = useState<"booths" | "stages" | "map">("map");
   const [selectedZone, setSelectedZone] = useState<ZoneId>("faith");
+  const [stageFilter, setStageFilter] = useState<"all" | "indoor" | "holies" | "outdoor">("all");
+
+  const carouselRef = useRef<HTMLDivElement>(null);
+
+  // 1. URL 쿼리 파라미터 연동 (?tab=booths&zone=hope, ?tab=stages&target=indoor)
+  useEffect(() => {
+    if (tabParam === "booths" || tabParam === "stages" || tabParam === "map") {
+      setActiveTab(tabParam);
+    }
+
+    if (zoneParam && ["faith", "hope", "love", "sharing"].includes(zoneParam)) {
+      setSelectedZone(zoneParam as ZoneId);
+    }
+
+    if (targetParam && ["indoor", "outdoor", "holies"].includes(targetParam)) {
+      setStageFilter(targetParam as "indoor" | "outdoor" | "holies");
+    }
+  }, [tabParam, zoneParam, targetParam]);
 
   const currentZoneData = OFFICIAL_ZONES.find((z) => z.id === selectedZone)!;
+
+  // 테마존 선택 시 상태 갱신 및 캐러셀 스크롤 이동
+  const handleSelectZone = (zoneId: ZoneId) => {
+    setSelectedZone(zoneId);
+    // 캐러셀 슬라이더 해당 카드로 부드럽게 스크롤
+    const idx = OFFICIAL_ZONES.findIndex((z) => z.id === zoneId);
+    if (carouselRef.current && idx !== -1) {
+      const cardWidth = 260; // 카드 너비 + 간격
+      carouselRef.current.scrollTo({
+        left: idx * cardWidth,
+        behavior: "smooth",
+      });
+    }
+  };
+
+  // 캐러셀 좌우 슬라이드
+  const scrollCarousel = (direction: "left" | "right") => {
+    if (carouselRef.current) {
+      const scrollAmount = direction === "left" ? -280 : 280;
+      carouselRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -41,7 +98,10 @@ export default function MapPage() {
       {/* 탭 네비게이션 */}
       <div className="bg-white rounded-2xl p-1.5 border border-slate-100 shadow-xs flex space-x-1.5">
         <button
-          onClick={() => setActiveTab("map")}
+          onClick={() => {
+            setActiveTab("map");
+            router.replace("/map?tab=map", { scroll: false });
+          }}
           className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
             activeTab === "map"
               ? "bg-orange-500 text-white shadow-sm"
@@ -51,7 +111,10 @@ export default function MapPage() {
           실시간 지도
         </button>
         <button
-          onClick={() => setActiveTab("booths")}
+          onClick={() => {
+            setActiveTab("booths");
+            router.replace(`/map?tab=booths&zone=${selectedZone}`, { scroll: false });
+          }}
           className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
             activeTab === "booths"
               ? "bg-orange-500 text-white shadow-sm"
@@ -61,7 +124,10 @@ export default function MapPage() {
           4대 테마존 부스 (81개)
         </button>
         <button
-          onClick={() => setActiveTab("stages")}
+          onClick={() => {
+            setActiveTab("stages");
+            router.replace("/map?tab=stages", { scroll: false });
+          }}
           className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
             activeTab === "stages"
               ? "bg-orange-500 text-white shadow-sm"
@@ -72,43 +138,123 @@ export default function MapPage() {
         </button>
       </div>
 
-      {/* 실시간 지도 탭 */}
+      {/* 1. 실시간 지도 탭 */}
       {activeTab === "map" && (
         <div className="space-y-3">
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm h-[480px]">
-            <KakaoMapView />
+            <KakaoMapView
+              onSelectZone={(zoneId) => {
+                setSelectedZone(zoneId);
+                setActiveTab("booths");
+                router.replace(`/map?tab=booths&zone=${zoneId}`, { scroll: false });
+              }}
+              onSelectStageTab={(stageType) => {
+                setStageFilter(stageType);
+                setActiveTab("stages");
+                router.replace(`/map?tab=stages&target=${stageType}`, { scroll: false });
+              }}
+            />
           </div>
           <div className="bg-orange-50 border border-orange-100 p-3 rounded-2xl text-xs text-orange-800 space-y-1">
             <p className="font-bold flex items-center space-x-1">
-              <span>📍 스포원파크 야외 분수광장 현장</span>
+              <span>📍 스포원파크 야외 분수광장 현장 인터랙티브 맵</span>
             </p>
-            <p className="text-[11px] text-orange-700">
-              지도의 구역 마커나 핀을 터치하면 상세 부스 목록과 번호를 확인할 수 있습니다.
+            <p className="text-[11px] text-orange-700 leading-relaxed">
+              지도의 구역 마커나 핀(부스, 접수대, 무대)을 터치하면 상세 부스 목록 또는 현장 실물 사진과 공연 일정을 바로 확인할 수 있습니다.
             </p>
           </div>
         </div>
       )}
 
-      {/* 부스 목록 탭 */}
+      {/* 2. 4대 테마존 부스 목록 (캐러셀 카드 슬라이더 & 부스 상세 리스트) */}
       {activeTab === "booths" && (
         <div className="space-y-4">
-          <div className="grid grid-cols-4 gap-1.5">
-            {OFFICIAL_ZONES.map((zone) => (
+          {/* 4대 테마존 캐러셀 헤더 & 좌우 네비게이션 */}
+          <div className="flex items-center justify-between px-1">
+            <div>
+              <h3 className="text-xs font-bold text-slate-800">4대 테마존 탐방 캐러셀</h3>
+              <p className="text-[10px] text-slate-500">카드를 넘겨 각 테마존의 부스 구성을 확인하세요</p>
+            </div>
+            <div className="flex items-center space-x-1">
               <button
-                key={zone.id}
-                onClick={() => setSelectedZone(zone.id)}
-                className={`py-2 px-1 rounded-xl text-xs font-bold flex flex-col items-center justify-center transition-all ${
-                  selectedZone === zone.id
-                    ? `bg-gradient-to-r ${zone.color} text-white shadow-sm scale-[1.02]`
-                    : "bg-white text-slate-600 border border-slate-100 hover:bg-slate-50"
-                }`}
+                onClick={() => scrollCarousel("left")}
+                className="p-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
+                aria-label="이전 테마존"
               >
-                <span>{zone.name.split(" ")[0]}</span>
-                <span className="text-[10px] opacity-80">{zone.booths.length}개</span>
+                <ChevronLeft className="w-4 h-4" />
               </button>
-            ))}
+              <button
+                onClick={() => scrollCarousel("right")}
+                className="p-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
+                aria-label="다음 테마존"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
+          {/* 테마존 가로 스크롤 캐러셀 슬라이더 */}
+          <div
+            ref={carouselRef}
+            className="flex space-x-3 overflow-x-auto pb-2 scrollbar-none snap-x snap-mandatory px-0.5"
+            style={{ scrollSnapType: "x mandatory" }}
+          >
+            {OFFICIAL_ZONES.map((zone) => {
+              const isSelected = selectedZone === zone.id;
+              return (
+                <div
+                  key={zone.id}
+                  onClick={() => {
+                    handleSelectZone(zone.id);
+                    router.replace(`/map?tab=booths&zone=${zone.id}`, { scroll: false });
+                  }}
+                  className={`flex-shrink-0 w-[240px] rounded-2xl p-4 cursor-pointer transition-all snap-start shadow-sm border ${
+                    isSelected
+                      ? `bg-gradient-to-br ${zone.color} text-white shadow-md ring-2 ring-orange-400 scale-[1.01]`
+                      : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span
+                      className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                        isSelected ? "bg-white/20 text-white backdrop-blur-xs" : zone.badgeBg + " " + zone.badgeText
+                      }`}
+                    >
+                      {zone.name}
+                    </span>
+                    <span
+                      className={`text-xs font-bold ${
+                        isSelected ? "text-white/90" : "text-slate-400"
+                      }`}
+                    >
+                      총 {zone.booths.length}개
+                    </span>
+                  </div>
+
+                  <h4 className="text-base font-black tracking-tight">{zone.koreanName}</h4>
+                  <p
+                    className={`text-xs mt-1 line-clamp-2 leading-relaxed ${
+                      isSelected ? "text-white/90" : "text-slate-500"
+                    }`}
+                  >
+                    {zone.description}
+                  </p>
+
+                  <div className="mt-3 pt-2.5 border-t border-white/20 flex items-center justify-between text-[11px]">
+                    <span className={isSelected ? "text-white/80" : "text-slate-400"}>
+                      7성사 부스: {zone.booths.filter((b) => b.isSacrament).length}개
+                    </span>
+                    <span className={`font-bold flex items-center ${isSelected ? "text-white" : "text-orange-600"}`}>
+                      {isSelected ? "선택됨" : "보기"}
+                      <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 현재 선택된 테마존 상세 부스 목록 */}
           <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
               <div>
@@ -158,42 +304,157 @@ export default function MapPage() {
         </div>
       )}
 
-      {/* 무대 일정 탭 */}
+      {/* 3. 무대 및 거점 일정 탭 (실내체육관, 지성소, 상설고해소, 야외무대) */}
       {activeTab === "stages" && (
         <div className="space-y-4">
-          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm space-y-3">
-            <div className="flex items-center space-x-2 border-b border-slate-100 pb-2">
-              <Sparkles className="w-4 h-4 text-orange-500" />
-              <h3 className="text-xs font-bold text-slate-800">실내체육관 메인 스테이지</h3>
-            </div>
-            <div className="space-y-2">
-              {INDOOR_STAGE_PROGRAMS.map((prog, idx) => (
-                <div key={idx} className="flex items-center justify-between text-xs p-2 rounded-xl bg-slate-50">
-                  <span className="font-bold text-slate-700">{prog.time}</span>
-                  <span className="font-medium text-slate-900">{prog.performer}</span>
-                  <span className="text-[10px] text-slate-400">{prog.category}</span>
-                </div>
-              ))}
-            </div>
+          {/* 일정 서브 필터 */}
+          <div className="flex space-x-1.5 bg-slate-100 p-1 rounded-2xl text-[11px] font-bold">
+            <button
+              onClick={() => setStageFilter("all")}
+              className={`flex-1 py-1.5 rounded-xl transition-all ${
+                stageFilter === "all" ? "bg-white text-slate-900 shadow-xs" : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              전체 보기
+            </button>
+            <button
+              onClick={() => setStageFilter("indoor")}
+              className={`flex-1 py-1.5 rounded-xl transition-all ${
+                stageFilter === "indoor" ? "bg-white text-orange-600 shadow-xs" : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              실내체육관
+            </button>
+            <button
+              onClick={() => setStageFilter("holies")}
+              className={`flex-1 py-1.5 rounded-xl transition-all ${
+                stageFilter === "holies" ? "bg-white text-purple-600 shadow-xs" : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              지성소/고해소
+            </button>
+            <button
+              onClick={() => setStageFilter("outdoor")}
+              className={`flex-1 py-1.5 rounded-xl transition-all ${
+                stageFilter === "outdoor" ? "bg-white text-emerald-600 shadow-xs" : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              야외무대
+            </button>
           </div>
 
-          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm space-y-3">
-            <div className="flex items-center space-x-2 border-b border-slate-100 pb-2">
-              <Music className="w-4 h-4 text-emerald-500" />
-              <h3 className="text-xs font-bold text-slate-800">야외 분수광장 버스킹/청년무대</h3>
-            </div>
-            <div className="space-y-2">
-              {OUTDOOR_STAGE_PROGRAMS.map((prog, idx) => (
-                <div key={idx} className="flex items-center justify-between text-xs p-2 rounded-xl bg-slate-50">
-                  <span className="font-bold text-slate-700">{prog.time}</span>
-                  <span className="font-medium text-slate-900">{prog.performer}</span>
-                  <span className="text-[10px] text-slate-400">{prog.category}</span>
+          {/* 3-A. 실내체육관 메인 스테이지 */}
+          {(stageFilter === "all" || stageFilter === "indoor") && (
+            <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <div className="flex items-center space-x-2">
+                  <Sparkles className="w-4 h-4 text-orange-500" />
+                  <h3 className="text-xs font-bold text-slate-800">실내체육관 메인 스테이지</h3>
                 </div>
-              ))}
+                <span className="text-[10px] font-bold bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full">
+                  B구역 · 12:00 개방
+                </span>
+              </div>
+              <div className="space-y-2">
+                {INDOOR_STAGE_PROGRAMS.map((prog, idx) => (
+                  <div key={idx} className="flex items-center justify-between text-xs p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100/80 transition-colors">
+                    <span className="font-bold text-slate-700 w-24 flex-shrink-0">{prog.time}</span>
+                    <span className="font-medium text-slate-900 flex-1 px-2">{prog.performer}</span>
+                    <span className="text-[10px] text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-100">
+                      {prog.category}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* 3-B. 지성소 (실내 문화홀) 성체조배 & 상설 고해소 */}
+          {(stageFilter === "all" || stageFilter === "holies") && (
+            <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <div className="flex items-center space-x-2">
+                  <Church className="w-4 h-4 text-purple-600" />
+                  <h3 className="text-xs font-bold text-slate-800">지성소(문화홀) 성체조배 & 상설고해소</h3>
+                </div>
+                <span className="text-[10px] font-bold bg-purple-50 text-purple-600 px-2 py-0.5 rounded-full">
+                  10:00 ~ 15:30
+                </span>
+              </div>
+
+              {/* 상설 고해소 안내 배너 */}
+              <div className="p-3 rounded-xl bg-purple-50 border border-purple-100 flex items-start space-x-2.5">
+                <ShieldAlert className="w-4 h-4 text-purple-600 flex-shrink-0 mt-0.5" />
+                <div className="text-xs space-y-0.5">
+                  <p className="font-bold text-purple-900">상설 고해소 운영 (가족공원 야외 잔디)</p>
+                  <p className="text-[11px] text-purple-700 leading-snug">
+                    운영시간: 13:30 ~ 15:30 / 참가 청년 누구나 자유롭게 사제단 고해성사 참례 가능
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                {HOLIES_SCHEDULE.map((slot) => (
+                  <div key={slot.id} className="p-2.5 rounded-xl bg-slate-50 space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-slate-800">{slot.time}</span>
+                      <span className="text-[10px] font-bold text-purple-600 bg-purple-100/60 px-2 py-0.5 rounded-md">
+                        {slot.badge}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-black text-slate-900">{slot.title}</span>
+                      <span className="text-[11px] text-slate-500">{slot.leaderOrTeam}</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-snug">{slot.description}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 3-C. 야외 분수광장 버스킹/청년무대 */}
+          {(stageFilter === "all" || stageFilter === "outdoor") && (
+            <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <div className="flex items-center space-x-2">
+                  <Music className="w-4 h-4 text-emerald-500" />
+                  <h3 className="text-xs font-bold text-slate-800">야외 분수광장 버스킹/청년무대</h3>
+                </div>
+                <span className="text-[10px] font-bold bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full">
+                  C구역 · 11:00 ~ 14:45
+                </span>
+              </div>
+              <div className="space-y-2">
+                {OUTDOOR_STAGE_PROGRAMS.map((prog, idx) => (
+                  <div key={idx} className="flex items-center justify-between text-xs p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100/80 transition-colors">
+                    <span className="font-bold text-slate-700 w-24 flex-shrink-0">{prog.time}</span>
+                    <span className="font-medium text-slate-900 flex-1 px-2">{prog.performer}</span>
+                    <span className="text-[10px] text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-100">
+                      {prog.category}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
+  );
+}
+
+export default function MapPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-[50vh] flex flex-col items-center justify-center space-y-2">
+          <div className="w-8 h-8 border-3 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-xs font-bold text-slate-500">행사장 지도를 불러오는 중...</p>
+        </div>
+      }
+    >
+      <MapPageContent />
+    </Suspense>
   );
 }
