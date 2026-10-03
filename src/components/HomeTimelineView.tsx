@@ -262,10 +262,10 @@ export function HomeTimelineView() {
                   ? "bg-white text-orange-600 shadow-xs"
                   : "text-slate-500 hover:text-slate-800"
               }`}
-              title="구역별 매트릭스 그리드 뷰"
+              title="구역별 캐러셀 슬라이드 뷰"
             >
               <LayoutGrid className="w-3.5 h-3.5" />
-              <span>구역별 그리드</span>
+              <span>구역별 캐러셀</span>
             </button>
             <button
               onClick={() => setViewMode("list")}
