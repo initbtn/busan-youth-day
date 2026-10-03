@@ -119,6 +119,54 @@ export function resolveEffectiveMimeType(file: { name?: string; type?: string })
   }
 }
 
+export function isHeicFile(file: { name?: string; type?: string }): boolean {
+  if (file.type) {
+    const normalized = file.type.toLowerCase().trim();
+    if (normalized === "image/heic" || normalized === "image/heif") {
+      return true;
+    }
+  }
+  const ext = getFileExtension(file.name);
+  return ext === "heic" || ext === "heif";
+}
+
+/**
+ * HEIC/HEIF 이미지를 브라우저 Canvas가 읽을 수 있도록 JPEG Blob으로 1차 변환합니다.
+ * 번들 최적화를 위해 heic2any 라이브러리는 HEIC 파일 처리 시에만 동적 import됩니다.
+ */
+export async function convertHeicToJpegIfPossible(file: File): Promise<File | Blob> {
+  if (typeof window === "undefined" || !isHeicFile(file)) {
+    return file;
+  }
+
+  try {
+    const heic2anyModule = await import("heic2any");
+    const heic2any = (heic2anyModule.default || heic2anyModule) as (options: {
+      blob: Blob;
+      toType: string;
+      quality?: number;
+    }) => Promise<Blob | Blob[]>;
+
+    const conversionResult = await heic2any({
+      blob: file,
+      toType: "image/jpeg",
+      quality: 0.9,
+    });
+
+    const convertedBlob = Array.isArray(conversionResult) ? conversionResult[0] : conversionResult;
+    if (!convertedBlob) return file;
+
+    const newFileName = file.name.replace(/\.(heic|heif)$/i, ".jpg");
+    return new File([convertedBlob], newFileName, {
+      type: "image/jpeg",
+      lastModified: Date.now(),
+    });
+  } catch (err) {
+    console.warn("HEIC to JPEG conversion failed, falling back to original:", err);
+    return file;
+  }
+}
+
 /**
  * 장변(maxDimension) 기준 비율 유지 리사이즈 계산
  */
@@ -169,9 +217,15 @@ export async function optimizeImage(
     return file;
   }
 
+  // HEIC/HEIF인 경우 heic2any를 통해 1차 JPEG 변환 후 Canvas WebP 최적화 진행
+  let processableFile: File | Blob = file;
+  if (isHeicFile(file)) {
+    processableFile = await convertHeicToJpegIfPossible(file);
+  }
+
   return new Promise((resolve) => {
     const img = new Image();
-    const objectUrl = URL.createObjectURL(file);
+    const objectUrl = URL.createObjectURL(processableFile);
 
     img.onload = () => {
       URL.revokeObjectURL(objectUrl);
