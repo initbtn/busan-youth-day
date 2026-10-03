@@ -77,7 +77,7 @@ export async function optimizeImage(
   file: File,
   options: OptimizeImageOptions = {}
 ): Promise<File | Blob> {
-  const { maxDimension = 1920, quality = 0.85, mimeType = "image/jpeg" } = options;
+  const { maxDimension = 1920, quality = 0.85, mimeType = "image/webp" } = options;
 
   // SSR 환경이거나 애니메이션 GIF인 경우 원본 반환
   if (typeof window === "undefined" || typeof document === "undefined" || file.type === "image/gif") {
@@ -127,7 +127,8 @@ export async function optimizeImage(
             return;
           }
 
-          const optimizedFile = new File([blob], file.name.replace(/\.[^/.]+$/, ".jpg"), {
+          const targetExt = mimeType === "image/webp" ? ".webp" : ".jpg";
+          const optimizedFile = new File([blob], file.name.replace(/\.[^/.]+$/, targetExt), {
             type: mimeType,
             lastModified: Date.now(),
           });
