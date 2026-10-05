@@ -77,10 +77,15 @@ CREATE TABLE IF NOT EXISTS public.posts (
   role TEXT DEFAULT '청년',
   content TEXT NOT NULL,
   image_url TEXT,
+  media_urls TEXT[],
   likes INTEGER DEFAULT 0,
   is_approved BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- 이미 만들어진 DB 용 (CREATE TABLE IF NOT EXISTS 는 컬럼을 추가하지 않는다)
+ALTER TABLE public.posts
+  ADD COLUMN IF NOT EXISTS media_urls TEXT[];
 
 ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
 
