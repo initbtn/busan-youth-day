@@ -22,6 +22,7 @@ import {
   ListFilter,
   ChevronRight,
 } from "lucide-react";
+import { ModalPortal } from "@/components/ModalPortal";
 
 interface KakaoOverlayItem {
   setMap: (map: unknown) => void;
@@ -817,44 +818,46 @@ export function KakaoMapView({
 
       {/* 5. 접수처 / 패키지수령처 / 클린 지도 현장 사진 팝업 모달 */}
       {photoModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[90vh]">
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-              <div>
-                <h3 className="text-sm font-black text-slate-900">{photoModal.title}</h3>
-                {photoModal.desc && (
-                  <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-1">{photoModal.desc}</p>
-                )}
+        <ModalPortal>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[90vh]">
+              <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div>
+                  <h3 className="text-sm font-black text-slate-900">{photoModal.title}</h3>
+                  {photoModal.desc && (
+                    <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-1">{photoModal.desc}</p>
+                  )}
+                </div>
+                <button
+                  onClick={() => setPhotoModal(null)}
+                  className="p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
+                  aria-label="닫기"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-              <button
-                onClick={() => setPhotoModal(null)}
-                className="p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
-                aria-label="닫기"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
 
-            <div className="p-3 bg-slate-900 flex items-center justify-center overflow-auto max-h-[65vh]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={photoModal.url}
-                alt={photoModal.title}
-                className="w-full h-auto max-h-[60vh] object-contain rounded-xl shadow-lg"
-              />
-            </div>
+              <div className="p-3 bg-slate-900 flex items-center justify-center overflow-auto max-h-[65vh]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={photoModal.url}
+                  alt={photoModal.title}
+                  className="w-full h-auto max-h-[60vh] object-contain rounded-xl shadow-lg"
+                />
+              </div>
 
-            <div className="p-3.5 bg-white border-t border-slate-100 flex items-center justify-between">
-              <span className="text-[11px] text-slate-400">2026 교구 청년의 날 공식 안내</span>
-              <button
-                onClick={() => setPhotoModal(null)}
-                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
-              >
-                확인
-              </button>
+              <div className="p-3.5 bg-white border-t border-slate-100 flex items-center justify-between">
+                <span className="text-[11px] text-slate-400">2026 교구 청년의 날 공식 안내</span>
+                <button
+                  onClick={() => setPhotoModal(null)}
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
+                >
+                  확인
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
     </div>
   );

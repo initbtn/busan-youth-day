@@ -9,6 +9,7 @@ import { OfficialBoothStageGuide } from "@/components/OfficialBoothStageGuide";
 import { TreasureHuntView } from "@/components/TreasureHuntView";
 import { signInWithKakao } from "@/lib/auth/kakao";
 import { QrCode, Gift, MapPin, Camera, BookOpen, Compass } from "lucide-react";
+import { ModalPortal } from "@/components/ModalPortal";
 
 export function StampBookView() {
   const { stamps, addStamp, hasRewardCoupon, isRewardEligible, user } = useUser();
@@ -304,42 +305,44 @@ export function StampBookView() {
 
       {/* 부스 상세 위키 바텀시트 / 모달 */}
       {selectedBooth && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-          <div className="bg-white w-full max-w-md rounded-3xl p-5 shadow-2xl animate-in slide-in-from-bottom-5">
-            <div className="flex justify-between items-start mb-3">
-              <div>
-                <span className="text-xs font-bold text-orange-600">{selectedBooth.zoneName}</span>
-                <h3 className="text-base font-bold text-slate-900 mt-0.5">{selectedBooth.name}</h3>
+        <ModalPortal>
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+            <div className="bg-white w-full max-w-md rounded-3xl p-5 shadow-2xl animate-in slide-in-from-bottom-5">
+              <div className="flex justify-between items-start mb-3">
+                <div>
+                  <span className="text-xs font-bold text-orange-600">{selectedBooth.zoneName}</span>
+                  <h3 className="text-base font-bold text-slate-900 mt-0.5">{selectedBooth.name}</h3>
+                </div>
+                <button
+                  onClick={() => setSelectedBooth(null)}
+                  className="text-xs font-semibold px-2.5 py-1 bg-slate-100 rounded-lg text-slate-600"
+                >
+                  닫기
+                </button>
               </div>
-              <button
-                onClick={() => setSelectedBooth(null)}
-                className="text-xs font-semibold px-2.5 py-1 bg-slate-100 rounded-lg text-slate-600"
-              >
-                닫기
-              </button>
-            </div>
 
-            <div className="space-y-2 text-xs text-slate-600 mb-4 bg-slate-50 p-3.5 rounded-2xl">
-              <div className="flex items-center space-x-1 font-medium text-slate-700">
-                <MapPin className="w-3.5 h-3.5 text-orange-500" />
-                <span>위치: {selectedBooth.location}</span>
+              <div className="space-y-2 text-xs text-slate-600 mb-4 bg-slate-50 p-3.5 rounded-2xl">
+                <div className="flex items-center space-x-1 font-medium text-slate-700">
+                  <MapPin className="w-3.5 h-3.5 text-orange-500" />
+                  <span>위치: {selectedBooth.location}</span>
+                </div>
+                <p className="leading-relaxed">{selectedBooth.description}</p>
               </div>
-              <p className="leading-relaxed">{selectedBooth.description}</p>
-            </div>
 
-            <div className="flex space-x-2">
-              <button
-                onClick={() => {
-                  handleApplyStamp(selectedBooth.qrCode);
-                  setSelectedBooth(null);
-                }}
-                className="w-full py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-semibold shadow-md transition-colors"
-              >
-                이 부스 스탬프 획득 (테스트 인증)
-              </button>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => {
+                    handleApplyStamp(selectedBooth.qrCode);
+                    setSelectedBooth(null);
+                  }}
+                  className="w-full py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-semibold shadow-md transition-colors"
+                >
+                  이 부스 스탬프 획득 (테스트 인증)
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
 
       {/* 실제 스마트폰 카메라 QR 스캐너 모달 */}

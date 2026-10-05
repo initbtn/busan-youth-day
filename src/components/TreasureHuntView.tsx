@@ -7,6 +7,7 @@ import { useUser } from "@/context/UserContext";
 import { QRCameraScanner } from "@/components/QRCameraScanner";
 import { signInWithKakao } from "@/lib/auth/kakao";
 import { Camera, Sparkles, CheckCircle2, MapPin, X, Trophy } from "lucide-react";
+import { ModalPortal } from "@/components/ModalPortal";
 
 export function TreasureHuntView() {
   const { treasures, addTreasure, user } = useUser();
@@ -194,84 +195,88 @@ export function TreasureHuntView() {
 
       {/* 힌트 및 발견 상세 모달 */}
       {selectedSpot && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-white w-full max-w-md rounded-3xl p-5 shadow-2xl animate-in slide-in-from-bottom-5 space-y-4">
-            <div className="flex justify-between items-start">
-              <div>
-                <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
-                  보물 스팟 힌트
-                </span>
-                <h3 className="text-base font-black text-slate-900 mt-1">{selectedSpot.name}</h3>
+        <ModalPortal>
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+            <div className="bg-white w-full max-w-md rounded-3xl p-5 shadow-2xl animate-in slide-in-from-bottom-5 space-y-4">
+              <div className="flex justify-between items-start">
+                <div>
+                  <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
+                    보물 스팟 힌트
+                  </span>
+                  <h3 className="text-base font-black text-slate-900 mt-1">{selectedSpot.name}</h3>
+                </div>
+                <button
+                  onClick={() => setSelectedSpot(null)}
+                  className="p-1.5 bg-slate-100 hover:bg-slate-200 rounded-full text-slate-500"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-              <button
-                onClick={() => setSelectedSpot(null)}
-                className="p-1.5 bg-slate-100 hover:bg-slate-200 rounded-full text-slate-500"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
 
-            <div className="p-4 bg-orange-50/70 border border-orange-100 rounded-2xl space-y-2">
-              <span className="text-xs font-bold text-orange-950 block">🕵️ 탐정 쭈양이의 힌트</span>
-              <p className="text-xs text-slate-700 leading-relaxed font-medium">
-                {selectedSpot.clue}
-              </p>
-              <div className="pt-1 text-[11px] text-slate-500 flex items-center space-x-1">
-                <MapPin className="w-3.5 h-3.5 text-orange-500" />
-                <span>위치: {selectedSpot.locationArea}</span>
+              <div className="p-4 bg-orange-50/70 border border-orange-100 rounded-2xl space-y-2">
+                <span className="text-xs font-bold text-orange-950 block">🕵️ 탐정 쭈양이의 힌트</span>
+                <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                  {selectedSpot.clue}
+                </p>
+                <div className="pt-1 text-[11px] text-slate-500 flex items-center space-x-1">
+                  <MapPin className="w-3.5 h-3.5 text-orange-500" />
+                  <span>위치: {selectedSpot.locationArea}</span>
+                </div>
               </div>
-            </div>
 
-            {treasures.includes(selectedSpot.id) ? (
-              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-1.5 text-center">
-                <span className="text-xs font-bold text-emerald-900 block">✨ 획득한 보물 축복</span>
-                <p className="text-xs text-slate-700 italic">&ldquo;{selectedSpot.blessingMessage}&rdquo;</p>
-              </div>
-            ) : (
-              <button
-                onClick={() => {
-                  setSelectedSpot(null);
-                  setIsCameraOpen(true);
-                }}
-                className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-2xl text-xs font-bold shadow-md transition-colors"
-              >
-                현장에서 찾았어요! (QR 스캔)
-              </button>
-            )}
+              {treasures.includes(selectedSpot.id) ? (
+                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-1.5 text-center">
+                  <span className="text-xs font-bold text-emerald-900 block">✨ 획득한 보물 축복</span>
+                  <p className="text-xs text-slate-700 italic">&ldquo;{selectedSpot.blessingMessage}&rdquo;</p>
+                </div>
+              ) : (
+                <button
+                  onClick={() => {
+                    setSelectedSpot(null);
+                    setIsCameraOpen(true);
+                  }}
+                  className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-2xl text-xs font-bold shadow-md transition-colors"
+                >
+                  현장에서 찾았어요! (QR 스캔)
+                </button>
+              )}
+            </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
 
       {/* 보물 발견 성공 축하 팝업 */}
       {foundSuccessSpot && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl text-center space-y-4 animate-in zoom-in-95">
-            <div className="relative w-28 h-28 mx-auto">
-              <Image
-                src={foundSuccessSpot.characterImg}
-                alt="축하 쭈양이"
-                fill
-                className="object-contain"
-              />
+        <ModalPortal>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+            <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl text-center space-y-4 animate-in zoom-in-95">
+              <div className="relative w-28 h-28 mx-auto">
+                <Image
+                  src={foundSuccessSpot.characterImg}
+                  alt="축하 쭈양이"
+                  fill
+                  className="object-contain"
+                />
+              </div>
+              <div className="space-y-1">
+                <span className="text-xs font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
+                  보물 발견 성공!
+                </span>
+                <h3 className="text-lg font-black text-slate-900">{foundSuccessSpot.name}</h3>
+                <p className="text-xs text-orange-700 font-bold">{foundSuccessSpot.characterReaction}</p>
+              </div>
+              <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-2xl italic leading-relaxed">
+                &ldquo;{foundSuccessSpot.blessingMessage}&rdquo;
+              </p>
+              <button
+                onClick={() => setFoundSuccessSpot(null)}
+                className="w-full py-3 bg-orange-500 text-white font-bold text-xs rounded-2xl shadow-md"
+              >
+                확인했양! 닫기
+              </button>
             </div>
-            <div className="space-y-1">
-              <span className="text-xs font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
-                보물 발견 성공!
-              </span>
-              <h3 className="text-lg font-black text-slate-900">{foundSuccessSpot.name}</h3>
-              <p className="text-xs text-orange-700 font-bold">{foundSuccessSpot.characterReaction}</p>
-            </div>
-            <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-2xl italic leading-relaxed">
-              &ldquo;{foundSuccessSpot.blessingMessage}&rdquo;
-            </p>
-            <button
-              onClick={() => setFoundSuccessSpot(null)}
-              className="w-full py-3 bg-orange-500 text-white font-bold text-xs rounded-2xl shadow-md"
-            >
-              확인했양! 닫기
-            </button>
           </div>
-        </div>
+        </ModalPortal>
       )}
 
       {/* 카메라 QR 스캐너 */}
