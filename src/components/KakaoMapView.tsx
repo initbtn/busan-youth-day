@@ -11,7 +11,7 @@ import {
 } from "@/data/boothLocations";
 import { OFFICIAL_ZONES } from "@/data/officialBooths";
 import { BoothListModal } from "@/components/BoothListModal";
-import { buildMapPins, SACRAMENT_CLUSTER_ID } from "@/lib/mapPins";
+import { buildMapPins, sacramentBadgeLabel, SACRAMENT_CLUSTER_ID } from "@/lib/mapPins";
 import {
   Sparkles,
   Crosshair,
@@ -173,7 +173,6 @@ export function KakaoMapView({
 
       const map = mapInstanceRef.current;
 
-      // 존 폴리곤 라벨과 중복되는 핀 제거, 7성사 핀 7개는 묶음 핀 하나로 합침
       const pins = buildMapPins(SPOWON_MAP_POINTS, filter, { showZonePolygons });
 
       pins.forEach(({ point, label }) => {
@@ -400,7 +399,6 @@ export function KakaoMapView({
 
   // 부스 상세페이지 또는 부스 목록으로 이동 (거점 시설은 안내 알림 또는 사진 모달)
   const handleOpenBoothDetail = (point: MapPoint) => {
-    // 0. 7성사 묶음 핀은 전체 부스 목록(7성사 부스 포함)으로 연결
     if (point.id === SACRAMENT_CLUSTER_ID) {
       setBoothModalInitialZone("all");
       setIsBoothModalOpen(true);
@@ -710,7 +708,7 @@ export function KakaoMapView({
                 {selectedPoint.isSacrament && (
                   <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full inline-flex items-center space-x-1">
                     <Sparkles className="w-3 h-3 text-amber-600" />
-                    <span>7성사 필수 ({selectedPoint.sacramentType})</span>
+                    <span>{sacramentBadgeLabel(selectedPoint)}</span>
                   </span>
                 )}
                 {selectedPoint.zoneName && (

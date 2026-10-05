@@ -18,6 +18,11 @@ function matchesFilter(p: MapPoint, filter: MapPinFilter): boolean {
   return p.category === "facility" || p.category === "stage";
 }
 
+export function sacramentBadgeLabel(point: Pick<MapPoint, "sacramentType">): string {
+  const type = point.sacramentType?.trim();
+  return type ? `7성사 필수 (${type})` : "7성사 필수";
+}
+
 export function buildMapPins(
   points: MapPoint[],
   filter: MapPinFilter,

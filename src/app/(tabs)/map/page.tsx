@@ -49,7 +49,6 @@ function MapPageContent() {
     }
   }, [tabParam, zoneParam, targetParam]);
 
-  // 스와이프로 슬라이드가 바뀌면 선택된 테마존과 URL 을 함께 맞춘다
   const handleCarouselScroll = () => {
     const el = carouselRef.current;
     if (!el) return;
@@ -61,7 +60,7 @@ function MapPageContent() {
     }
   };
 
-  // 탭 진입·URL 로 선택 존이 정해지면 해당 슬라이드로 위치를 맞춘다 (즉시 이동 — 중간 슬라이드를 거치지 않는다)
+  // smooth 로 가면 지나가는 슬라이드마다 handleCarouselScroll 이 선택 존을 바꾸므로 즉시 이동한다
   useEffect(() => {
     if (activeTab !== "booths") return;
     const el = carouselRef.current;
@@ -72,7 +71,6 @@ function MapPageContent() {
     }
   }, [activeTab, selectedZone]);
 
-  // 이전/다음 테마존 슬라이드
   const scrollCarousel = (direction: "left" | "right") => {
     const el = carouselRef.current;
     if (el) {
@@ -174,7 +172,6 @@ function MapPageContent() {
         </div>
       )}
 
-      {/* 2. 4대 테마존 부스 목록 (캐러셀 카드 슬라이더 & 부스 상세 리스트) */}
       {activeTab === "booths" && (
         <div className="space-y-4">
           {/* 4대 테마존 캐러셀 헤더 & 좌우 네비게이션 */}
@@ -201,7 +198,6 @@ function MapPageContent() {
             </div>
           </div>
 
-          {/* 테마존 슬라이드: 존마다 카드 + 부스 리스트가 한 슬라이드, 넘기면 함께 바뀐다 */}
           <div
             ref={carouselRef}
             onScroll={handleCarouselScroll}
@@ -255,7 +251,6 @@ function MapPageContent() {
                     </div>
                   </div>
 
-                  {/* 이 테마존의 부스 리스트 (카드와 한 슬라이드) */}
                   <div className="bg-white rounded-2xl border border-slate-100 shadow-xs divide-y divide-slate-100 overflow-hidden max-h-[500px] overflow-y-auto">
                     {zone.booths.map((b) => (
                       <Link

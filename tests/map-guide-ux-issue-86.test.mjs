@@ -66,6 +66,34 @@ describe("Issue #86: 지도 핀 중복 정리 (buildMapPins)", async () => {
   });
 });
 
+describe("Issue #86: 7성사 시트 배지 문구 (sacramentBadgeLabel)", async () => {
+  const { SPOWON_MAP_POINTS } = await import("../src/data/boothLocations.ts");
+
+  test("정상값: 개별 7성사 부스는 성사 이름이 괄호로 붙는다", async () => {
+    const { sacramentBadgeLabel } = await import("../src/lib/mapPins.ts");
+    const point = SPOWON_MAP_POINTS.find((p) => p.category === "sacrament");
+    assert.equal(sacramentBadgeLabel(point), `7성사 필수 (${point.sacramentType})`);
+  });
+
+  test("틀린값: 묶음 핀(성사 이름 없음)은 빈 괄호 없이 '7성사 필수' 만 나온다", async () => {
+    const { buildMapPins, sacramentBadgeLabel } = await import("../src/lib/mapPins.ts");
+    const [cluster] = buildMapPins(SPOWON_MAP_POINTS, "sacrament", { showZonePolygons: true });
+    assert.equal(sacramentBadgeLabel(cluster.point), "7성사 필수");
+  });
+
+  test("헷갈리는 값: 성사 이름이 빈 문자열·공백이어도 빈 괄호가 나오지 않는다", async () => {
+    const { sacramentBadgeLabel } = await import("../src/lib/mapPins.ts");
+    assert.equal(sacramentBadgeLabel({ sacramentType: "" }), "7성사 필수");
+    assert.equal(sacramentBadgeLabel({ sacramentType: "   " }), "7성사 필수");
+  });
+
+  test("지도 컴포넌트가 이 함수를 쓰고 빈 괄호가 나오는 직접 보간이 남지 않는다", () => {
+    const view = read("src/components/KakaoMapView.tsx");
+    assert.ok(view.includes("sacramentBadgeLabel(selectedPoint)"));
+    assert.equal(view.includes("({selectedPoint.sacramentType})"), false);
+  });
+});
+
 describe("Issue #86: 존 카드+리스트 한 슬라이드 (zoneIndexFromScroll)", () => {
   test("스크롤 위치에서 가장 가까운 슬라이드 인덱스를 돌려준다", async () => {
     const { zoneIndexFromScroll } = await import("../src/lib/zoneCarousel.ts");
