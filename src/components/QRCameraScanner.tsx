@@ -3,6 +3,7 @@
 import React, { useEffect } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { X, Camera, AlertCircle } from "lucide-react";
+import { ModalPortal } from "@/components/ModalPortal";
 
 interface QRCameraScannerProps {
   isOpen: boolean;
@@ -55,37 +56,39 @@ export function QRCameraScanner({ isOpen, onClose, onScanSuccess }: QRCameraScan
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in">
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-sm w-full overflow-hidden shadow-2xl relative flex flex-col items-center p-5 text-white">
-        <div className="w-full flex justify-between items-center mb-3">
-          <div className="flex items-center space-x-2 text-xs font-bold text-blue-400">
-            <Camera className="w-4 h-4" />
-            <span>부스 현장 QR 스캔</span>
+    <ModalPortal>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in">
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-sm w-full overflow-hidden shadow-2xl relative flex flex-col items-center p-5 text-white">
+          <div className="w-full flex justify-between items-center mb-3">
+            <div className="flex items-center space-x-2 text-xs font-bold text-blue-400">
+              <Camera className="w-4 h-4" />
+              <span>부스 현장 QR 스캔</span>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-1.5 bg-slate-800 text-slate-300 hover:text-white rounded-full transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 bg-slate-800 text-slate-300 hover:text-white rounded-full transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
 
-        {/* 카메라 뷰파인더 영역 */}
-        <div className="w-full aspect-square bg-black rounded-2xl overflow-hidden relative border-2 border-blue-500/50 shadow-inner flex items-center justify-center">
-          <div id="byd-qr-reader" className="w-full h-full" />
-          <div className="absolute inset-0 pointer-events-none border-2 border-dashed border-amber-400/60 m-8 rounded-xl" />
-        </div>
+          {/* 카메라 뷰파인더 영역 */}
+          <div className="w-full aspect-square bg-black rounded-2xl overflow-hidden relative border-2 border-blue-500/50 shadow-inner flex items-center justify-center">
+            <div id="byd-qr-reader" className="w-full h-full" />
+            <div className="absolute inset-0 pointer-events-none border-2 border-dashed border-amber-400/60 m-8 rounded-xl" />
+          </div>
 
-        <div className="mt-4 text-center space-y-1">
-          <p className="text-xs font-semibold text-slate-200">
-            부스에 부착된 QR 코드를 사각형 안에 비춰주세요
-          </p>
-          <p className="text-[10px] text-slate-400 flex items-center justify-center space-x-1">
-            <AlertCircle className="w-3 h-3 text-amber-400" />
-            <span>카메라 접근 허용이 필요합니다.</span>
-          </p>
+          <div className="mt-4 text-center space-y-1">
+            <p className="text-xs font-semibold text-slate-200">
+              부스에 부착된 QR 코드를 사각형 안에 비춰주세요
+            </p>
+            <p className="text-[10px] text-slate-400 flex items-center justify-center space-x-1">
+              <AlertCircle className="w-3 h-3 text-amber-400" />
+              <span>카메라 접근 허용이 필요합니다.</span>
+            </p>
+          </div>
         </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }

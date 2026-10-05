@@ -52,6 +52,8 @@ import {
 import { MediaSliderViewer } from "@/components/MediaSliderViewer";
 import { signInWithKakao } from "@/lib/auth/kakao";
 import { useSearchParams } from "next/navigation";
+import { ModalPortal } from "@/components/ModalPortal";
+import { useBodyScrollLock } from "@/lib/useBodyScrollLock";
 
 interface PostMediaCarouselProps {
   mediaUrls: string[];
@@ -275,17 +277,7 @@ export function CommunityFeedView() {
     }
   }, [targetPostId]);
 
-  // 모달 오픈 시 배경 스크롤 락 (DoD 5)
-  useEffect(() => {
-    if (isUploadModalOpen || reportingPost || viewerOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [isUploadModalOpen, reportingPost, viewerOpen]);
+  useBodyScrollLock(isUploadModalOpen || Boolean(reportingPost) || viewerOpen);
 
   const handleCloseUploadModal = React.useCallback(() => {
     if (isPosting) return;
@@ -820,186 +812,190 @@ export function CommunityFeedView() {
 
       {/* 새 게시글 작성 모달 다이얼로그 (DoD 4 & DoD 5) */}
       {isUploadModalOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget && !isPosting) {
-              handleCloseUploadModal();
-            }
-          }}
-        >
-          <div className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto animate-in fade-in slide-in-from-bottom duration-200">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center space-x-2">
-                <span className="text-base">✨</span>
-                <h3 className="font-bold text-sm text-slate-900">새 게시물 작성</h3>
-              </div>
-              <button
-                type="button"
-                disabled={isPosting}
-                onClick={handleCloseUploadModal}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-full"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreatePost} className="space-y-4">
-              <div className="flex items-center space-x-2.5">
-                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs">
-                  {user?.name?.[0] || "P"}
+        <ModalPortal>
+          <div
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget && !isPosting) {
+                handleCloseUploadModal();
+              }
+            }}
+          >
+            <div className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto animate-in fade-in slide-in-from-bottom duration-200">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center space-x-2">
+                  <span className="text-base">✨</span>
+                  <h3 className="font-bold text-sm text-slate-900">새 게시물 작성</h3>
                 </div>
-                <div>
-                  <div className="text-xs font-bold text-slate-800">
-                    {user?.name || "참가자"}
-                  </div>
-                  <div className="text-[10px] text-slate-400">
-                    {user?.parish ? `${user.parish}성당` : "부산교구"} · {user?.saintGroup ? `${user.saintGroup} · ` : ""}{user?.role || "청년"}
-                  </div>
-                </div>
-              </div>
-
-              <textarea
-                rows={4}
-                placeholder="청년의 날 은혜로운 순간이나 응원 한마디를 남겨보세요..."
-                value={newContent}
-                onChange={(e) => setNewContent(e.target.value)}
-                className="w-full text-xs p-3.5 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-              />
-
-              {/* 첨부된 미디어 미리보기 */}
-              {previewUrls.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
-                    <span>첨부된 미디어 ({previewUrls.length}/5)</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        previewUrls.forEach((url) => URL.revokeObjectURL(url));
-                        setSelectedFiles([]);
-                        setPreviewUrls([]);
-                      }}
-                      className="text-rose-500 hover:text-rose-600"
-                    >
-                      전체 취소
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-                    {previewUrls.map((url, idx) => {
-                      const file = selectedFiles[idx];
-                      const isVideo = file ? isVideoFile(file) : isVideoUrl(url);
-
-                      return (
-                        <div
-                          key={`${url}-${idx}`}
-                          className="relative aspect-square rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 group"
-                        >
-                          {isVideo ? (
-                            <video src={url} className="w-full h-full object-cover" muted />
-                          ) : (
-                            <img src={url} alt={`미리보기 ${idx + 1}`} className="w-full h-full object-cover" />
-                          )}
-                          {isVideo && (
-                            <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded text-[8px] font-bold bg-black/70 text-white">
-                              동영상
-                            </span>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveFile(idx)}
-                            className="absolute top-1 right-1 p-1 bg-black/70 text-white rounded-full hover:bg-black/90 transition-colors shadow-sm"
-                            title="삭제"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex justify-between items-center pt-2 border-t border-slate-100">
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  multiple
-                  accept="image/*,video/*"
-                  data-testid="media-file-input"
-                  className="hidden"
-                />
-
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center space-x-1.5 text-blue-600 hover:text-blue-700 text-xs font-bold bg-blue-50 px-3.5 py-2 rounded-xl transition-colors"
+                  disabled={isPosting}
+                  onClick={handleCloseUploadModal}
+                  className="p-1 text-slate-400 hover:text-slate-600 rounded-full"
                 >
-                  <Camera className="w-4 h-4" />
-                  <span>사진·동영상 첨부 {selectedFiles.length > 0 ? `(${selectedFiles.length})` : ""}</span>
+                  <X className="w-5 h-5" />
                 </button>
+              </div>
 
-                <div className="flex items-center space-x-2">
+              <form onSubmit={handleCreatePost} className="space-y-4">
+                <div className="flex items-center space-x-2.5">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs">
+                    {user?.name?.[0] || "P"}
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-slate-800">
+                      {user?.name || "참가자"}
+                    </div>
+                    <div className="text-[10px] text-slate-400">
+                      {user?.parish ? `${user.parish}성당` : "부산교구"} · {user?.saintGroup ? `${user.saintGroup} · ` : ""}{user?.role || "청년"}
+                    </div>
+                  </div>
+                </div>
+
+                <textarea
+                  rows={4}
+                  placeholder="청년의 날 은혜로운 순간이나 응원 한마디를 남겨보세요..."
+                  value={newContent}
+                  onChange={(e) => setNewContent(e.target.value)}
+                  className="w-full text-xs p-3.5 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                />
+
+                {/* 첨부된 미디어 미리보기 */}
+                {previewUrls.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
+                      <span>첨부된 미디어 ({previewUrls.length}/5)</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          previewUrls.forEach((url) => URL.revokeObjectURL(url));
+                          setSelectedFiles([]);
+                          setPreviewUrls([]);
+                        }}
+                        className="text-rose-500 hover:text-rose-600"
+                      >
+                        전체 취소
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                      {previewUrls.map((url, idx) => {
+                        const file = selectedFiles[idx];
+                        const isVideo = file ? isVideoFile(file) : isVideoUrl(url);
+
+                        return (
+                          <div
+                            key={`${url}-${idx}`}
+                            className="relative aspect-square rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 group"
+                          >
+                            {isVideo ? (
+                              <video src={url} className="w-full h-full object-cover" muted />
+                            ) : (
+                              <img src={url} alt={`미리보기 ${idx + 1}`} className="w-full h-full object-cover" />
+                            )}
+                            {isVideo && (
+                              <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded text-[8px] font-bold bg-black/70 text-white">
+                                동영상
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveFile(idx)}
+                              className="absolute top-1 right-1 p-1 bg-black/70 text-white rounded-full hover:bg-black/90 transition-colors shadow-sm"
+                              title="삭제"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-between items-center pt-2 border-t border-slate-100">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    multiple
+                    accept="image/*,video/*"
+                    data-testid="media-file-input"
+                    className="hidden"
+                  />
+
                   <button
                     type="button"
-                    disabled={isPosting}
-                    onClick={handleCloseUploadModal}
-                    className="px-3.5 py-2 text-slate-500 hover:bg-slate-100 rounded-xl text-xs font-semibold transition-all"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center space-x-1.5 text-blue-600 hover:text-blue-700 text-xs font-bold bg-blue-50 px-3.5 py-2 rounded-xl transition-colors"
                   >
-                    취소
+                    <Camera className="w-4 h-4" />
+                    <span>사진·동영상 첨부 {selectedFiles.length > 0 ? `(${selectedFiles.length})` : ""}</span>
                   </button>
-                  <button
-                    type="submit"
-                    disabled={isPosting || !newContent.trim()}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center space-x-1"
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>{isPosting ? "업로드 중..." : "게시하기"}</span>
-                  </button>
+
+                  <div className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      disabled={isPosting}
+                      onClick={handleCloseUploadModal}
+                      className="px-3.5 py-2 text-slate-500 hover:bg-slate-100 rounded-xl text-xs font-semibold transition-all"
+                    >
+                      취소
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isPosting || !newContent.trim()}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center space-x-1"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>{isPosting ? "업로드 중..." : "게시하기"}</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </form>
+              </form>
+            </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
 
       {/* 게시글 신고 다이얼로그 모달 */}
       {reportingPost && (
-        <div
-          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setReportingPost(null);
-          }}
-        >
-          <div className="bg-white rounded-3xl p-5 max-w-xs w-full shadow-2xl space-y-4">
-            <div className="flex items-center space-x-2 text-rose-600">
-              <AlertTriangle className="w-5 h-5" />
-              <h3 className="font-bold text-sm text-slate-900">게시글 신고</h3>
-            </div>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              &apos;{reportingPost.author}&apos; 님의 게시글을 부적절한 콘텐츠(비방, 스팸, 혐오 표현 등)로 신고하시겠습니까?
-            </p>
-            <div className="flex space-x-2 pt-1">
-              <button
-                type="button"
-                onClick={() => setReportingPost(null)}
-                className="flex-1 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  alert("신고가 정상 접수되었습니다. 운영진 검토 후 조치됩니다.");
-                  setReportingPost(null);
-                }}
-                className="flex-1 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-xs transition-colors"
-              >
-                신고 접수
-              </button>
+        <ModalPortal>
+          <div
+            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setReportingPost(null);
+            }}
+          >
+            <div className="bg-white rounded-3xl p-5 max-w-xs w-full shadow-2xl space-y-4">
+              <div className="flex items-center space-x-2 text-rose-600">
+                <AlertTriangle className="w-5 h-5" />
+                <h3 className="font-bold text-sm text-slate-900">게시글 신고</h3>
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                &apos;{reportingPost.author}&apos; 님의 게시글을 부적절한 콘텐츠(비방, 스팸, 혐오 표현 등)로 신고하시겠습니까?
+              </p>
+              <div className="flex space-x-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setReportingPost(null)}
+                  className="flex-1 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    alert("신고가 정상 접수되었습니다. 운영진 검토 후 조치됩니다.");
+                    setReportingPost(null);
+                  }}
+                  className="flex-1 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-xs transition-colors"
+                >
+                  신고 접수
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
 
       {/* 전체화면 확대 슬라이드 뷰어 */}
