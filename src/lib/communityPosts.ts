@@ -166,6 +166,7 @@ export interface SupabasePostRow {
   role?: string | null;
   content: string;
   image_url?: string | null;
+  media_urls?: string[] | null;
   likes?: number | null;
   is_approved?: boolean | null;
   created_at?: string | null;
@@ -186,7 +187,7 @@ export async function syncPostToSupabase(
   }
 
   try {
-    const payload: Record<string, string | number | null | undefined> = {
+    const payload: Record<string, string | number | string[] | null | undefined> = {
       content: post.content,
       image_url: post.imageUrl || null,
       author: post.author,
@@ -195,6 +196,12 @@ export async function syncPostToSupabase(
       likes: post.likes || 1,
       created_at: post.createdAt || new Date().toISOString(),
     };
+
+    // 1장짜리는 image_url 만으로 충분하다 — media_urls 컬럼 마이그레이션 전에 배포돼도 일반 글은 저장된다.
+    const mediaUrls = getPostMediaUrls(post);
+    if (mediaUrls.length > 1) {
+      payload.media_urls = mediaUrls;
+    }
 
     if (post.id) {
       payload.id = post.id;
@@ -262,6 +269,8 @@ export async function fetchPostsFromSupabase(supabaseClient: unknown): Promise<C
       role: row.role || "청년",
       content: row.content,
       imageUrl: row.image_url || undefined,
+      mediaUrls:
+        Array.isArray(row.media_urls) && row.media_urls.length > 0 ? row.media_urls : undefined,
       likes: typeof row.likes === "number" ? row.likes : 0,
       timeAgo: formatTimeAgo(row.created_at || undefined),
       createdAt: row.created_at || undefined,
