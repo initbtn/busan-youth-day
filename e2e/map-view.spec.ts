@@ -10,9 +10,9 @@ test.describe("현장지도 (/map) 라우트 및 카카오맵 연동 E2E", () =>
     await expect(page.locator("text=공식 부스 · 무대 · 행사장 안내")).toBeVisible();
     await expect(page.locator("text=현장 가이드북")).toBeVisible();
 
-    // 2. 3대 서브 탭(실시간 지도, 4대 테마존 부스, 특설무대 일정) 버튼 존재 확인
+    // 2. 3대 서브 탭(실시간 지도, 부스 안내, 특설무대 일정) 버튼 존재 확인
     const mapTab = page.locator("button:has-text('실시간 지도')");
-    const boothsTab = page.locator("button:has-text('4대 테마존 부스')");
+    const boothsTab = page.locator("button:has-text('부스 안내')");
     const stagesTab = page.locator("button:has-text('특설무대 일정')");
 
     await expect(mapTab).toBeVisible();
@@ -27,8 +27,8 @@ test.describe("현장지도 (/map) 라우트 및 카카오맵 연동 E2E", () =>
   });
 
   test("DoD 2: 테마존 부스 탭 및 특설무대 일정 탭 전환 인터랙션 검증", async ({ page }) => {
-    // 1. 4대 테마존 부스 탭 클릭
-    await page.locator("button:has-text('4대 테마존 부스')").click();
+    // 1. 부스 안내 탭 클릭
+    await page.locator("button:has-text('부스 안내')").click();
     await expect(page.locator("text=총 81개 부스").or(page.locator("text=믿음존"))).toBeVisible();
 
     // 2. 특설무대 일정 탭 클릭

@@ -11,6 +11,7 @@ import {
 } from "@/data/boothLocations";
 import { OFFICIAL_ZONES } from "@/data/officialBooths";
 import { BoothListModal } from "@/components/BoothListModal";
+import { buildMapPins, sacramentBadgeLabel, SACRAMENT_CLUSTER_ID } from "@/lib/mapPins";
 import {
   Sparkles,
   Crosshair,
@@ -172,18 +173,9 @@ export function KakaoMapView({
 
       const map = mapInstanceRef.current;
 
-      const filteredPoints = SPOWON_MAP_POINTS.filter((p) => {
-        if (filter === "all") {
-          // 핀 과밀 해소: 전체 보기에서는 7성사 필수 부스와 주요 거점 시설/무대만 우선 노출
-          return p.isSacrament || p.category === "stage" || p.category === "facility";
-        }
-        if (filter === "sacrament") return p.category === "sacrament";
-        if (filter === "zone") return p.category === "zone";
-        if (filter === "facility") return p.category === "facility" || p.category === "stage";
-        return true;
-      });
+      const pins = buildMapPins(SPOWON_MAP_POINTS, filter, { showZonePolygons });
 
-      filteredPoints.forEach((point) => {
+      pins.forEach(({ point, label }) => {
         const position = new window.kakao.maps.LatLng(point.lat, point.lng);
 
         // 커스텀 HTML 오버레이 컨텐츠 생성
@@ -219,7 +211,7 @@ export function KakaoMapView({
         content.innerHTML = `
           <div class="px-2 py-1 rounded-full shadow-lg text-[10px] font-bold flex items-center space-x-1 border ${badgeColor}">
             <span>${icon}</span>
-            <span class="max-w-[100px] truncate">${point.tag || point.name.split(" ")[0]}</span>
+            <span class="max-w-[100px] truncate">${label}</span>
           </div>
           <div class="w-1.5 h-1.5 bg-slate-800 rotate-45 -mt-0.5 shadow-sm"></div>
         `;
@@ -239,7 +231,7 @@ export function KakaoMapView({
         markersRef.current.push(customOverlay);
       });
     },
-    [handleSelectPoint]
+    [handleSelectPoint, showZonePolygons]
   );
 
   // 3. 사용자 위치 오버레이 렌더링
@@ -407,6 +399,12 @@ export function KakaoMapView({
 
   // 부스 상세페이지 또는 부스 목록으로 이동 (거점 시설은 안내 알림 또는 사진 모달)
   const handleOpenBoothDetail = (point: MapPoint) => {
+    if (point.id === SACRAMENT_CLUSTER_ID) {
+      setBoothModalInitialZone("all");
+      setIsBoothModalOpen(true);
+      return;
+    }
+
     // 1. 접수처 / 패키지수령처 등 현장 실물 사진이 등록된 거점
     if (point.photoUrl) {
       setPhotoModal({
@@ -628,7 +626,7 @@ export function KakaoMapView({
 
               <div className="p-2.5 bg-slate-50 rounded-xl text-center">
                 <p className="text-[11px] text-slate-600">
-                  상단의 <strong className="text-orange-600 font-bold">&apos;4대 테마존 부스 (81개)&apos;</strong> 탭을 클릭하시면 전체 부스 목록을 확인하실 수 있습니다.
+                  상단의 <strong className="text-orange-600 font-bold">&apos;부스 안내&apos;</strong> 탭을 클릭하시면 전체 부스 목록을 확인하실 수 있습니다.
                 </p>
               </div>
             </div>
@@ -710,7 +708,7 @@ export function KakaoMapView({
                 {selectedPoint.isSacrament && (
                   <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full inline-flex items-center space-x-1">
                     <Sparkles className="w-3 h-3 text-amber-600" />
-                    <span>7성사 필수 ({selectedPoint.sacramentType})</span>
+                    <span>{sacramentBadgeLabel(selectedPoint)}</span>
                   </span>
                 )}
                 {selectedPoint.zoneName && (
