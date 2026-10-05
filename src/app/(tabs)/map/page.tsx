@@ -16,6 +16,7 @@ import { KakaoMapView } from "@/components/KakaoMapView";
 import { OFFICIAL_ZONES, ZoneData } from "@/data/officialBooths";
 import { INDOOR_STAGE_PROGRAMS, OUTDOOR_STAGE_PROGRAMS } from "@/data/stageSchedule";
 import { HOLIES_SCHEDULE } from "@/data/holiesSchedule";
+import { zoneIndexFromScroll } from "@/lib/zoneCarousel";
 
 type ZoneId = ZoneData["id"];
 
@@ -48,27 +49,34 @@ function MapPageContent() {
     }
   }, [tabParam, zoneParam, targetParam]);
 
-  const currentZoneData = OFFICIAL_ZONES.find((z) => z.id === selectedZone)!;
-
-  // 테마존 선택 시 상태 갱신 및 캐러셀 스크롤 이동
-  const handleSelectZone = (zoneId: ZoneId) => {
-    setSelectedZone(zoneId);
-    // 캐러셀 슬라이더 해당 카드로 부드럽게 스크롤
-    const idx = OFFICIAL_ZONES.findIndex((z) => z.id === zoneId);
-    if (carouselRef.current && idx !== -1) {
-      const cardWidth = 260; // 카드 너비 + 간격
-      carouselRef.current.scrollTo({
-        left: idx * cardWidth,
-        behavior: "smooth",
-      });
+  // 스와이프로 슬라이드가 바뀌면 선택된 테마존과 URL 을 함께 맞춘다
+  const handleCarouselScroll = () => {
+    const el = carouselRef.current;
+    if (!el) return;
+    const idx = zoneIndexFromScroll(el.scrollLeft, el.clientWidth, OFFICIAL_ZONES.length);
+    const zoneId = OFFICIAL_ZONES[idx].id;
+    if (zoneId !== selectedZone) {
+      setSelectedZone(zoneId);
+      router.replace(`/map?tab=booths&zone=${zoneId}`, { scroll: false });
     }
   };
 
-  // 캐러셀 좌우 슬라이드
+  // 탭 진입·URL 로 선택 존이 정해지면 해당 슬라이드로 위치를 맞춘다 (즉시 이동 — 중간 슬라이드를 거치지 않는다)
+  useEffect(() => {
+    if (activeTab !== "booths") return;
+    const el = carouselRef.current;
+    if (!el) return;
+    const idx = OFFICIAL_ZONES.findIndex((z) => z.id === selectedZone);
+    if (idx !== -1 && zoneIndexFromScroll(el.scrollLeft, el.clientWidth, OFFICIAL_ZONES.length) !== idx) {
+      el.scrollTo({ left: idx * el.clientWidth, behavior: "auto" });
+    }
+  }, [activeTab, selectedZone]);
+
+  // 이전/다음 테마존 슬라이드
   const scrollCarousel = (direction: "left" | "right") => {
-    if (carouselRef.current) {
-      const scrollAmount = direction === "left" ? -280 : 280;
-      carouselRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
+    const el = carouselRef.current;
+    if (el) {
+      el.scrollBy({ left: direction === "left" ? -el.clientWidth : el.clientWidth, behavior: "smooth" });
     }
   };
 
@@ -121,7 +129,7 @@ function MapPageContent() {
               : "bg-slate-50 text-slate-500 hover:text-slate-700"
           }`}
         >
-          4대 테마존 부스 (81개)
+          부스 안내
         </button>
         <button
           onClick={() => {
@@ -193,10 +201,11 @@ function MapPageContent() {
             </div>
           </div>
 
-          {/* 테마존 가로 스크롤 캐러셀 슬라이더 */}
+          {/* 테마존 슬라이드: 존마다 카드 + 부스 리스트가 한 슬라이드, 넘기면 함께 바뀐다 */}
           <div
             ref={carouselRef}
-            className="flex space-x-3 overflow-x-auto pb-2 scrollbar-none snap-x snap-mandatory px-0.5"
+            onScroll={handleCarouselScroll}
+            className="flex overflow-x-auto scrollbar-none snap-x snap-mandatory items-start"
             style={{ scrollSnapType: "x mandatory" }}
           >
             {OFFICIAL_ZONES.map((zone) => {
@@ -204,102 +213,85 @@ function MapPageContent() {
               return (
                 <div
                   key={zone.id}
-                  onClick={() => {
-                    handleSelectZone(zone.id);
-                    router.replace(`/map?tab=booths&zone=${zone.id}`, { scroll: false });
-                  }}
-                  className={`flex-shrink-0 w-[240px] rounded-2xl p-4 cursor-pointer transition-all snap-start shadow-sm border ${
-                    isSelected
-                      ? `bg-gradient-to-br ${zone.color} text-white shadow-md ring-2 ring-orange-400 scale-[1.01]`
-                      : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"
-                  }`}
+                  data-testid="zone-slide"
+                  className="w-full flex-shrink-0 snap-center space-y-3 px-0.5"
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <span
-                      className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                        isSelected ? "bg-white/20 text-white backdrop-blur-xs" : zone.badgeBg + " " + zone.badgeText
-                      }`}
-                    >
-                      {zone.name}
-                    </span>
-                    <span
-                      className={`text-xs font-bold ${
-                        isSelected ? "text-white/90" : "text-slate-400"
-                      }`}
-                    >
-                      총 {zone.booths.length}개
-                    </span>
-                  </div>
-
-                  <h4 className="text-base font-black tracking-tight">{zone.koreanName}</h4>
-                  <p
-                    className={`text-xs mt-1 line-clamp-2 leading-relaxed ${
-                      isSelected ? "text-white/90" : "text-slate-500"
+                  <div
+                    className={`rounded-2xl p-4 transition-all shadow-sm border ${
+                      isSelected
+                        ? `bg-gradient-to-br ${zone.color} text-white shadow-md ring-2 ring-orange-400`
+                        : "bg-white text-slate-700 border-slate-200"
                     }`}
                   >
-                    {zone.description}
-                  </p>
+                    <div className="flex items-center justify-between mb-2">
+                      <span
+                        className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                          isSelected ? "bg-white/20 text-white backdrop-blur-xs" : zone.badgeBg + " " + zone.badgeText
+                        }`}
+                      >
+                        {zone.name}
+                      </span>
+                      <span className={`text-xs font-bold ${isSelected ? "text-white/90" : "text-slate-400"}`}>
+                        총 {zone.booths.length}개
+                      </span>
+                    </div>
 
-                  <div className="mt-3 pt-2.5 border-t border-white/20 flex items-center justify-between text-[11px]">
-                    <span className={isSelected ? "text-white/80" : "text-slate-400"}>
-                      7성사 부스: {zone.booths.filter((b) => b.isSacrament).length}개
-                    </span>
-                    <span className={`font-bold flex items-center ${isSelected ? "text-white" : "text-orange-600"}`}>
-                      {isSelected ? "선택됨" : "보기"}
-                      <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
-                    </span>
+                    <h4 className="text-base font-black tracking-tight">{zone.koreanName}</h4>
+                    <p
+                      className={`text-xs mt-1 line-clamp-2 leading-relaxed ${
+                        isSelected ? "text-white/90" : "text-slate-500"
+                      }`}
+                    >
+                      {zone.description}
+                    </p>
+
+                    <div className="mt-3 pt-2.5 border-t border-white/20 flex items-center justify-between text-[11px]">
+                      <span className={isSelected ? "text-white/80" : "text-slate-400"}>
+                        7성사 부스: {zone.booths.filter((b) => b.isSacrament).length}개
+                      </span>
+                      <span className={isSelected ? "text-white/80" : "text-slate-400"}>
+                        {OFFICIAL_ZONES.findIndex((z) => z.id === zone.id) + 1} / {OFFICIAL_ZONES.length}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 이 테마존의 부스 리스트 (카드와 한 슬라이드) */}
+                  <div className="bg-white rounded-2xl border border-slate-100 shadow-xs divide-y divide-slate-100 overflow-hidden max-h-[500px] overflow-y-auto">
+                    {zone.booths.map((b) => (
+                      <Link
+                        key={b.number}
+                        href={`/booth/${zone.id}-${b.number}`}
+                        className="p-3.5 flex items-center justify-between text-xs hover:bg-orange-50/60 transition-colors group"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-600 font-black text-[11px] flex items-center justify-center flex-shrink-0 group-hover:bg-orange-500 group-hover:text-white transition-colors">
+                            {b.number}
+                          </span>
+                          <div>
+                            <div className="flex items-center space-x-1.5">
+                              <span className="font-bold text-slate-900 group-hover:text-orange-950 transition-colors">{b.name}</span>
+                              {b.isSacrament && (
+                                <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.2 rounded-full font-bold">
+                                  7성사 부스
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          {b.isSacrament && (
+                            <span className="text-[10px] font-semibold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-lg flex-shrink-0">
+                              필수 1개
+                            </span>
+                          )}
+                          <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-orange-500 transition-colors" />
+                        </div>
+                      </Link>
+                    ))}
                   </div>
                 </div>
               );
             })}
-          </div>
-
-          {/* 현재 선택된 테마존 상세 부스 목록 */}
-          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-              <div>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full text-white bg-gradient-to-r ${currentZoneData.color}`}>
-                  {currentZoneData.name}
-                </span>
-                <h3 className="text-sm font-black text-slate-800 mt-1">{currentZoneData.koreanName}</h3>
-                <p className="text-xs text-slate-600 mt-0.5">{currentZoneData.description}</p>
-              </div>
-              <span className="text-xs font-bold text-slate-400">총 {currentZoneData.booths.length}개 부스</span>
-            </div>
-
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-xs divide-y divide-slate-100 overflow-hidden max-h-[500px] overflow-y-auto">
-              {currentZoneData.booths.map((b) => (
-                <Link
-                  key={b.number}
-                  href={`/booth/${currentZoneData.id}-${b.number}`}
-                  className="p-3.5 flex items-center justify-between text-xs hover:bg-orange-50/60 transition-colors group"
-                >
-                  <div className="flex items-center space-x-3">
-                    <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-600 font-black text-[11px] flex items-center justify-center flex-shrink-0 group-hover:bg-orange-500 group-hover:text-white transition-colors">
-                      {b.number}
-                    </span>
-                    <div>
-                      <div className="flex items-center space-x-1.5">
-                        <span className="font-bold text-slate-900 group-hover:text-orange-950 transition-colors">{b.name}</span>
-                        {b.isSacrament && (
-                          <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.2 rounded-full font-bold">
-                            7성사 부스
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    {b.isSacrament && (
-                      <span className="text-[10px] font-semibold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-lg flex-shrink-0">
-                        필수 1개
-                      </span>
-                    )}
-                    <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-orange-500 transition-colors" />
-                  </div>
-                </Link>
-              ))}
-            </div>
           </div>
         </div>
       )}
