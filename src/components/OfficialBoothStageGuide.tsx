@@ -61,7 +61,7 @@ export function OfficialBoothStageGuide({ isOpen, onClose, defaultTab = "booths"
                 : "bg-slate-100 text-slate-500 hover:text-slate-700"
             }`}
           >
-            4대 테마존 부스 (81개)
+            부스 안내
           </button>
           <button
             onClick={() => setActiveTab("stages")}

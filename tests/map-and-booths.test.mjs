@@ -186,7 +186,7 @@ describe("Kakao Map & Booth Overlay Integrity (Issue #19)", () => {
       "SDK 실패 시에도 4대 테마존 현장 배치도 블록을 폴백으로 렌더링해야 합니다."
     );
     assert.ok(
-      content.includes("4대 테마존 부스 (81개)"),
+      content.includes("부스 안내"),
       "폴백 화면에 상단 부스 탭을 통한 안내 유도 문구가 포함되어야 합니다."
     );
   });
