@@ -22,6 +22,10 @@ describe("GitHub Actions Cron Keep-Alive 및 E2E 테스트 분리 검증 (Issue 
     // Supabase URL 및 anon key 기반 API 호출 확인
     assert.match(content, /NEXT_PUBLIC_SUPABASE_URL|SUPABASE_URL/, "Supabase URL 환경변수를 참조해야 합니다.");
     assert.match(content, /NEXT_PUBLIC_SUPABASE_ANON_KEY|SUPABASE_ANON_KEY/, "Supabase Anon Key 환경변수를 참조해야 합니다.");
+
+    // Finding 1 개선 검증: 비정상 상태 시 exit 1 (fail-fast) 및 200번대 응답 검증
+    assert.match(content, /exit 1/, "비정상 응답 또는 오류 발생 시 exit 1로 실패해야 합니다.");
+    assert.match(content, /posts\?select=id|health/, "실제 쿼리 또는 헬스체크 엔드포인트를 호출해야 합니다.");
   });
 
   test("DoD 2: e2e.yml 워크플로에서 일반 push/PR 시 단위 테스트 상시 실행 및 E2E 실행 조건 분리 검증", () => {
@@ -36,8 +40,15 @@ describe("GitHub Actions Cron Keep-Alive 및 E2E 테스트 분리 검증 (Issue 
     assert.match(content, /workflow_dispatch/, "수동 디버그 및 검증을 위한 workflow_dispatch가 활성화되어야 합니다.");
     assert.match(
       content,
-      /if:\s*github\.event_name\s*==\s*'workflow_dispatch'|if:\s*\${{\s*github\.event_name\s*==\s*'workflow_dispatch'/,
+      /github\.event_name\s*==\s*'workflow_dispatch'/,
       "Playwright E2E 실행 스텝 또는 Job에 workflow_dispatch 조건부 가드가 적용되어야 합니다."
+    );
+
+    // Finding 2 개선 검증: run_e2e 입력 파라미터 반영 확인
+    assert.match(
+      content,
+      /run_e2e/,
+      "run_e2e 입력 파라미터가 조건문에 연동되어야 합니다."
     );
   });
 
