@@ -21,3 +21,4 @@
 | **cleanup(⑨)** | 빌드 아티팩트 및 임시 파일 정리 |
 | **배포(⑩)** | Vercel CLI 배포 (진입점: `npx vercel --prod` / 환경변수 프로비저닝: `make env-sync-vercel` / `pass vercel.com/token-jsconn`) |
 | **warming** | pass·gpg (`DOMSTACK_WARMING` on) |
+| **알림** | 텔레그램 봇 알림 (토큰: `pass show telegram/bot-token` / chat_id: `pass show telegram/chat-id` / 식별자: `busan-youth-day (2026 BYD)`) |

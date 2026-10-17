@@ -31,3 +31,21 @@ jobs:
             echo "Error: Unexpected response status ${HTTP_STATUS}"
             exit 1
           fi
+
+      - name: Send Telegram Alert on Failure
+        if: failure()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          if [ -n "${TELEGRAM_BOT_TOKEN}" ] && [ -n "${TELEGRAM_CHAT_ID}" ]; then
+            MESSAGE="🚨 [busan-youth-day (CI/KeepAlive)] Supabase 핑 실패 경고
+• 워크플로: Supabase Keep-Alive
+• 상태: 실행 실패 (HTTP 상태 오류 또는 환경변수 누락)
+• 실행 링크: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+              -H "Content-Type: application/json" \
+              -d "$(jq -n --arg chat_id "${TELEGRAM_CHAT_ID}" --arg text "${MESSAGE}" '{chat_id: $chat_id, text: $text}')"
+          else
+            echo "Telegram credentials not provided. Skipping alert."
+          fi
