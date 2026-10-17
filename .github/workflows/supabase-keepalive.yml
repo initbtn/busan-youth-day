@@ -1,0 +1,33 @@
+name: Supabase Keep-Alive
+
+on:
+  schedule:
+    - cron: "0 0 */3 * *"
+  workflow_dispatch:
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase Database via REST API
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "${NEXT_PUBLIC_SUPABASE_URL}" ] || [ -z "${NEXT_PUBLIC_SUPABASE_ANON_KEY}" ]; then
+            echo "Error: NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY secret is not set."
+            exit 1
+          fi
+
+          echo "Sending keep-alive ping to Supabase posts endpoint..."
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}" \
+            "${NEXT_PUBLIC_SUPABASE_URL}/rest/v1/posts?select=id&limit=1")
+          
+          echo "Supabase response status: ${HTTP_STATUS}"
+          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+            echo "Supabase database ping succeeded with HTTP ${HTTP_STATUS}."
+          else
+            echo "Error: Unexpected response status ${HTTP_STATUS}"
+            exit 1
+          fi
