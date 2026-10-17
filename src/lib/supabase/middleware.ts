@@ -39,13 +39,15 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
+  let timerId: NodeJS.Timeout | undefined;
   try {
     const timeoutPromise = new Promise<{ data: { user: null }; error: Error }>(
-      (_, reject) =>
-        setTimeout(
+      (_, reject) => {
+        timerId = setTimeout(
           () => reject(new Error("Supabase auth.getUser timeout (3s limit exceeded)")),
           SUPABASE_AUTH_TIMEOUT_MS
-        )
+        );
+      }
     );
 
     await Promise.race([supabase.auth.getUser(), timeoutPromise]);
@@ -63,6 +65,10 @@ export async function updateSession(request: NextRequest) {
     }).catch((err) => console.error("[Middleware] Failed to send Telegram alert:", err));
 
     // Supabase가 다운되거나 지연되어도 일반 공개 페이지는 정상 반환 (Graceful Degradation)
+  } finally {
+    if (timerId) {
+      clearTimeout(timerId);
+    }
   }
 
   return supabaseResponse;

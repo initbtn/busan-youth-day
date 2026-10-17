@@ -40,7 +40,7 @@ export async function sendTelegramAlert({
   const text = lines.join("\n");
 
   try {
-    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+    const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -50,6 +50,11 @@ export async function sendTelegramAlert({
         text,
       }),
     });
+
+    if (!res.ok) {
+      const errorText = await res.text().catch(() => "");
+      throw new Error(`Telegram API responded with HTTP ${res.status}: ${errorText}`);
+    }
   } catch (alertError) {
     // 알림 발송 실패가 메인 런타임에 영향을 주지 않도록 로깅만 수행
     console.error("[TelegramAlert] Failed to send alert:", alertError);
