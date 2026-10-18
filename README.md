@@ -111,7 +111,7 @@ flowchart TD
 | **Authentication** | Supabase Auth, Kakao REST OAuth 2.0 | 카카오 SSO 간편 회원가입 및 세션 관리 |
 | **Media Pipeline** | heic2any, HTML5 Canvas, AWS S3 SDK | 아이폰 HEIC 자동 변환, 클라이언트 리사이징 |
 | **Hardware / QR** | html5-qrcode, Lucide React Icons | 카메라 바코드/QR 스캔, 벡터 아이콘 |
-| **Testing & CI** | Node.js Test Runner, Playwright, GitHub Actions | 25개 단위/계약 테스트 스위트, E2E 회귀 방지 |
+| **Testing & CI** | Node.js Test Runner, Playwright, GitHub Actions | 26개 단위/계약 테스트 스위트, E2E 회귀 방지 |
 | **Infrastructure** | Vercel (Production), Cloudflare DNS | 글로벌 엣지 배포 및 SSL 자동 프로비저닝 |
 
 ---
@@ -146,7 +146,7 @@ npm run dev
 
 ### 4) 전체 테스트 및 빌드 검증
 ```bash
-# 전체 단위 및 계약 테스트 스위트 (25개 스위트) 실행
+# 전체 단위 및 계약 테스트 스위트 (26개 스위트) 실행
 npm test
 
 # 프로덕션 번들 빌드 및 타입 검사

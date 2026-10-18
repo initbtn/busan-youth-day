@@ -499,11 +499,14 @@ export function CommunityFeedView() {
             body: JSON.stringify({
               fileName: file.name,
               contentType: effectiveContentType,
+              fileSize: file.size,
             }),
           });
 
           if (!presignedRes.ok) {
-            throw new Error(`Presigned URL 발급 실패 (${file.name})`);
+            const errData = await presignedRes.json().catch(() => ({}));
+            const msg = errData.error || `Presigned URL 발급 실패 (${file.name})`;
+            throw new Error(msg);
           }
 
           const { uploadUrl, publicUrl } = await presignedRes.json();
