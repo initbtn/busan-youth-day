@@ -499,11 +499,14 @@ export function CommunityFeedView() {
             body: JSON.stringify({
               fileName: file.name,
               contentType: effectiveContentType,
+              fileSize: file.size,
             }),
           });
 
           if (!presignedRes.ok) {
-            throw new Error(`Presigned URL 발급 실패 (${file.name})`);
+            const errData = await presignedRes.json().catch(() => ({}));
+            const msg = errData.error || `Presigned URL 발급 실패 (${file.name})`;
+            throw new Error(msg);
           }
 
           const { uploadUrl, publicUrl } = await presignedRes.json();
@@ -521,7 +524,11 @@ export function CommunityFeedView() {
         }
       } catch (err) {
         console.error("Media upload failed:", err);
-        alert("사진/동영상 업로드 중 오류가 발생했습니다. 네트워크 상태를 확인 후 다시 시도해 주세요.");
+        const errorMsg =
+          err instanceof Error
+            ? err.message
+            : "사진/동영상 업로드 중 오류가 발생했습니다. 네트워크 상태를 확인 후 다시 시도해 주세요.";
+        alert(errorMsg);
         setIsPosting(false);
         return;
       }

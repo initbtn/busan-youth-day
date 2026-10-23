@@ -14,12 +14,18 @@ const r2Client = new S3Client({
  * Cloudflare R2 업로드를 위한 Presigned URL 발급
  * @param fileName 저장할 파일명 (예: posts/unique-id.jpg)
  * @param contentType 파일 MIME 타입 (예: image/jpeg)
+ * @param fileSize 업로드할 파일의 크기(바이트) — 서명에 ContentLength를 강제하여 임의 크기 업로드 방어
  */
-export async function getR2PresignedUploadUrl(fileName: string, contentType: string) {
+export async function getR2PresignedUploadUrl(
+  fileName: string,
+  contentType: string,
+  fileSize?: number
+) {
   const command = new PutObjectCommand({
     Bucket: process.env.R2_BUCKET_NAME,
     Key: fileName,
     ContentType: contentType,
+    ...(fileSize !== undefined && { ContentLength: fileSize }),
   });
 
   // 유효시간 60초
