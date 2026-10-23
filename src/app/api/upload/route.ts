@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getR2PresignedUploadUrl } from "@/lib/r2";
+import { sanitizeUploadFileName } from "@/lib/uploadSanitizer";
 
 // 최대 파일 크기: 15MB (이미지 및 동영상 공통 상한)
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
@@ -63,7 +64,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const uniqueKey = `posts/${Date.now()}-${Math.random().toString(36).substring(2, 8)}-${fileName}`;
+    const sanitizedFileName = sanitizeUploadFileName(fileName, contentType);
+    const uniqueKey = `posts/${Date.now()}-${Math.random().toString(36).substring(2, 8)}-${sanitizedFileName}`;
     const { uploadUrl, publicUrl, key } = await getR2PresignedUploadUrl(
       uniqueKey,
       contentType,
