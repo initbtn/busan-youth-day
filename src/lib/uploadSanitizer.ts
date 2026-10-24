@@ -12,7 +12,13 @@ export const MIME_TO_EXTENSIONS: Record<string, string[]> = {
 };
 
 /**
+ * 허용 미디어 MIME 타입 목록 (Single Source of Truth)
+ */
+export const ALLOWED_MIME_TYPES: string[] = Object.keys(MIME_TO_EXTENSIONS);
+
+/**
  * 업로드 파일명 정규화 및 R2 저장소/URL 안전 키 변환
+ * - 유니코드 정규화(NFC): macOS/iOS Safari의 NFD 분해 자모(ᄀ, ᅡ)를 NFC 완성형(가)으로 합성
  * - 경로 탐색(../, /, \) 제거
  * - URL 예약어(#, ?, %, &, +, =, :, ;, @, ", ', <, >, [, ], {, }, |, ^, ~, *) 및 공백 제거/치환
  * - 한글, 영문, 숫자, 안전 구분자(-, _) 보존
@@ -20,8 +26,11 @@ export const MIME_TO_EXTENSIONS: Record<string, string[]> = {
  * - 확장자 누락 또는 MIME 타입 불일치 시 contentType 기반 표준 확장자 자동 보정
  */
 export function sanitizeUploadFileName(fileName: string, contentType: string): string {
+  // 0. 유니코드 NFC 정규화 (macOS/iOS 분해형 자모 합성)
+  const normalized = (fileName || "").normalize("NFC");
+
   // 1. 경로 구분자 제거 (디렉터리 탐색 방어)
-  const baseOnly = fileName.replace(/^.*[\\\/]/, "").trim();
+  const baseOnly = normalized.replace(/^.*[\\\/]/, "").trim();
 
   // 2. 확장자 분리
   const lastDotIndex = baseOnly.lastIndexOf(".");
@@ -39,8 +48,8 @@ export function sanitizeUploadFileName(fileName: string, contentType: string): s
   // 공백을 언더스코어로 치환
   let sanitizedBase = rawBase.replace(/\s+/g, "_");
 
-  // 안전하지 않은 문자 제거 (한글, 영문, 숫자, _, - 만 허용)
-  sanitizedBase = sanitizedBase.replace(/[^a-zA-Z0-9_\-\uAC00-\uD7A3\u3131-\u318E]/g, "_");
+  // 안전하지 않은 문자 제거 (한글 완성형 및 자모, 영문, 숫자, _, - 만 허용)
+  sanitizedBase = sanitizedBase.replace(/[^a-zA-Z0-9_\-\uAC00-\uD7A3\u3131-\u318E\u1100-\u11FF]/g, "_");
 
   // 연속된 언더스코어/하이픈 압축
   sanitizedBase = sanitizedBase.replace(/[-_]{2,}/g, "_");

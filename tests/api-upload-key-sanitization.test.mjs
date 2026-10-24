@@ -2,8 +2,15 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { sanitizeUploadFileName } from "../src/lib/uploadSanitizer.ts";
-import { getPublicUrl } from "../src/lib/r2.ts";
+
+const uploadSanitizer = await import("../src/lib/uploadSanitizer.ts");
+const sanitizeUploadFileName =
+  uploadSanitizer.sanitizeUploadFileName || uploadSanitizer.default?.sanitizeUploadFileName;
+const ALLOWED_MIME_TYPES =
+  uploadSanitizer.ALLOWED_MIME_TYPES || uploadSanitizer.default?.ALLOWED_MIME_TYPES;
+
+const r2 = await import("../src/lib/r2.ts");
+const getPublicUrl = r2.getPublicUrl || r2.default?.getPublicUrl;
 
 describe("업로드 파일명 저장소 키 및 공개 URL 안전성 검증 (Issue #95)", () => {
   const uploadRoutePath = path.resolve("src/app/api/upload/route.ts");
@@ -56,6 +63,16 @@ describe("업로드 파일명 저장소 키 및 공개 URL 안전성 검증 (Iss
     test("7. 특수문자나 점으로만 구성되어 베이스명이 비어버린 경우 기본값(upload)으로 대체된다", () => {
       const result = sanitizeUploadFileName("###???...///", "image/png");
       assert.equal(result, "upload.png");
+    });
+
+    test("8. macOS/iOS Safari NFD 유니코드 분해 자모 파일명이 NFC 완성형으로 온전히 정규화 보존된다", () => {
+      // "청년의날_사진"의 NFD 분해 문자열
+      const nfdName = "청년의날_사진".normalize("NFD");
+      assert.notEqual(nfdName, "청년의날_사진", "NFD는 NFC 완성형과 유니코드 바이트가 달라야 합니다.");
+
+      const result = sanitizeUploadFileName(`${nfdName}.jpg`, "image/jpeg");
+      assert.equal(result, "청년의날_사진.jpg", "NFD 한글 파일명이 NFC 완성형으로 정상 합성되어야 합니다.");
+      assert.notEqual(result, "upload.jpg", "NFD 한글이 언더스코어로 파괴되어 upload로 대체되어서는 안 됩니다.");
     });
   });
 
@@ -111,6 +128,16 @@ describe("업로드 파일명 저장소 키 및 공개 URL 안전성 검증 (Iss
         content,
         /uniqueKey\s*=\s*`posts\/\${Date\.now\(\)}-\${.*}-\${sanitizedFileName}`/,
         "uniqueKey는 sanitizedFileName을 기반으로 조립되어야 합니다."
+      );
+    });
+
+    test("src/app/api/upload/route.ts는 uploadSanitizer의 ALLOWED_MIME_TYPES를 참조하여 MIME을 검증한다", () => {
+      const content = fs.readFileSync(uploadRoutePath, "utf-8");
+
+      assert.match(
+        content,
+        /ALLOWED_MIME_TYPES\.includes\(contentType\)/,
+        "upload/route.ts는 uploadSanitizer의 ALLOWED_MIME_TYPES 상수를 재사용해야 합니다."
       );
     });
 

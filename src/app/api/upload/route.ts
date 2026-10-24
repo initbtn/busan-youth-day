@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getR2PresignedUploadUrl } from "@/lib/r2";
-import { sanitizeUploadFileName } from "@/lib/uploadSanitizer";
+import { sanitizeUploadFileName, ALLOWED_MIME_TYPES } from "@/lib/uploadSanitizer";
 
 // 최대 파일 크기: 15MB (이미지 및 동영상 공통 상한)
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
@@ -47,17 +47,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 허용 이미지 및 영상 MIME 타입 검증
-    const allowedTypes = [
-      "image/jpeg",
-      "image/png",
-      "image/webp",
-      "image/gif",
-      "video/mp4",
-      "video/webm",
-      "video/quicktime",
-    ];
-    if (!allowedTypes.includes(contentType)) {
+    // 허용 이미지 및 영상 MIME 타입 검증 (uploadSanitizer SSOT 참조)
+    if (!ALLOWED_MIME_TYPES.includes(contentType)) {
       return NextResponse.json(
         { error: "Only image (jpeg, png, webp, gif) and video (mp4, webm, mov) files are allowed" },
         { status: 400 }
