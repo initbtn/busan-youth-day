@@ -111,6 +111,13 @@ describe("피드 사진 의도 누락 방지 및 업로드 흐름 안정성 검�
       /첨부 취소 \(본문만 게시\)/,
       "사용자가 사진 없이 본문만 등록할 수 있도록 첨부 취소 버튼을 제공해야 합니다."
     );
+
+    // 5. 5개 초과 선택 시 조기 반환이 setHasAttemptedAttachment보다 먼저 위치하여 0장 고착 방지 (Review Finding 1)
+    const limitBeforeAttempt = /const handleFileChange = async[\s\S]*?rawFiles\.length > 5[\s\S]*?setHasAttemptedAttachment\(true\)/.test(content);
+    assert.ok(
+      limitBeforeAttempt,
+      "5개 초과 검증 및 early return이 setHasAttemptedAttachment(true)보다 선행되어야 합니다."
+    );
   });
 
   test("DoD 6: CommunityFeedView.tsx 정적 계약 — 업로드 실패 시 등록 취소, 입력 유지 및 실패 원인 안내", () => {

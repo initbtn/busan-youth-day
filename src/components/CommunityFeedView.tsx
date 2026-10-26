@@ -56,6 +56,10 @@ import { useSearchParams } from "next/navigation";
 import { ModalPortal } from "@/components/ModalPortal";
 import { useBodyScrollLock } from "@/lib/useBodyScrollLock";
 
+const MAX_IMAGE_SIZE_MB = 15;
+const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024;
+const MAX_SHORTS_MINUTES = Math.round(MAX_VIDEO_DURATION_SECONDS / 60);
+
 interface PostMediaCarouselProps {
   mediaUrls: string[];
   author: string;
@@ -377,14 +381,14 @@ export function CommunityFeedView() {
     const rawFiles = Array.from(e.target.files || []);
     if (rawFiles.length === 0) return;
 
-    setHasAttemptedAttachment(true);
-    setAttachmentRejectReason(null);
-
     if (selectedFiles.length + rawFiles.length > 5) {
       alert("한 번에 최대 5개의 사진/동영상만 첨부할 수 있습니다.");
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
+
+    setHasAttemptedAttachment(true);
+    setAttachmentRejectReason(null);
 
     // 처리 대상 파일 수만큼 카운터 증가 (처리 중 플레이스홀더 표시 및 게시 버튼 잠금)
     setProcessingMediaCount((prev) => prev + rawFiles.length);
@@ -405,8 +409,8 @@ export function CommunityFeedView() {
           continue;
         }
 
-        if (!isVideoFile(file) && file.size > 15 * 1024 * 1024) {
-          alert(`${file.name}: 사진 크기는 15MB 이하여야 합니다.`);
+        if (!isVideoFile(file) && file.size > MAX_IMAGE_SIZE_BYTES) {
+          alert(`${file.name}: 사진 크기는 ${MAX_IMAGE_SIZE_MB}MB 이하여야 합니다.`);
           continue;
         }
 
@@ -459,14 +463,12 @@ export function CommunityFeedView() {
   };
 
   const handleRemoveFile = (index: number) => {
-    setSelectedFiles((prev) => {
-      const next = prev.filter((_, i) => i !== index);
-      if (next.length === 0) {
-        setHasAttemptedAttachment(false);
-        setAttachmentRejectReason(null);
-      }
-      return next;
-    });
+    const nextFiles = selectedFiles.filter((_, i) => i !== index);
+    setSelectedFiles(nextFiles);
+    if (nextFiles.length === 0) {
+      setHasAttemptedAttachment(false);
+      setAttachmentRejectReason(null);
+    }
     setPreviewUrls((prev) => {
       if (prev[index]) URL.revokeObjectURL(prev[index]);
       return prev.filter((_, i) => i !== index);
@@ -969,7 +971,7 @@ export function CommunityFeedView() {
                         <div>
                           <p className="font-semibold">{attachmentRejectReason}</p>
                           <p className="text-[10px] text-rose-600 mt-0.5">
-                            파일 크기(15MB)나 동영상 길이(1분)를 확인해 주시거나, 본문만 등록하려면 우측 상단의 &apos;첨부 취소&apos;를 눌러주세요.
+                            파일 크기({MAX_IMAGE_SIZE_MB}MB)나 동영상 길이({MAX_SHORTS_MINUTES}분)를 확인해 주시거나, 본문만 등록하려면 우측 상단의 &apos;첨부 취소&apos;를 눌러주세요.
                           </p>
                         </div>
                       </div>
