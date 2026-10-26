@@ -19,6 +19,7 @@ import {
   Layers,
   ChevronLeft,
   ChevronRight,
+  Loader2,
 } from "lucide-react";
 import { useUser } from "@/context/UserContext";
 import { createClient } from "@/lib/supabase/client";
@@ -54,6 +55,10 @@ import { signInWithKakao } from "@/lib/auth/kakao";
 import { useSearchParams } from "next/navigation";
 import { ModalPortal } from "@/components/ModalPortal";
 import { useBodyScrollLock } from "@/lib/useBodyScrollLock";
+
+const MAX_IMAGE_SIZE_MB = 15;
+const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024;
+const MAX_SHORTS_MINUTES = Math.round(MAX_VIDEO_DURATION_SECONDS / 60);
 
 interface PostMediaCarouselProps {
   mediaUrls: string[];
@@ -215,6 +220,12 @@ export function CommunityFeedView() {
   const [reportingPost, setReportingPost] = useState<CommunityPost | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Issue #94: 미디어 압축/변환 처리 상태 및 업로드 진행률
+  const [processingMediaCount, setProcessingMediaCount] = useState(0);
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
+  const [hasAttemptedAttachment, setHasAttemptedAttachment] = useState(false);
+  const [attachmentRejectReason, setAttachmentRejectReason] = useState<string | null>(null);
+
   // 미디어 전체화면 슬라이드 뷰어 상태
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerMediaUrls, setViewerMediaUrls] = useState<string[]>([]);
@@ -290,6 +301,10 @@ export function CommunityFeedView() {
     previewUrls.forEach((url) => URL.revokeObjectURL(url));
     setSelectedFiles([]);
     setPreviewUrls([]);
+    setProcessingMediaCount(0);
+    setUploadProgress(null);
+    setHasAttemptedAttachment(false);
+    setAttachmentRejectReason(null);
     setIsUploadModalOpen(false);
   }, [isPosting, newContent, selectedFiles, previewUrls]);
 
@@ -368,31 +383,37 @@ export function CommunityFeedView() {
 
     if (selectedFiles.length + rawFiles.length > 5) {
       alert("한 번에 최대 5개의 사진/동영상만 첨부할 수 있습니다.");
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
 
-    const newOptimizedFiles: File[] = [];
-    const newPreviews: string[] = [];
+    setHasAttemptedAttachment(true);
+    setAttachmentRejectReason(null);
+
+    // 처리 대상 파일 수만큼 카운터 증가 (처리 중 플레이스홀더 표시 및 게시 버튼 잠금)
+    setProcessingMediaCount((prev) => prev + rawFiles.length);
+
+    let addedCount = 0;
 
     for (const file of rawFiles) {
-      if (!isSupportedMediaType(file.type, file.name)) {
-        alert(`${file.name}: 지원하지 않는 파일 형식입니다. (JPEG, PNG, WebP, GIF, HEIC, MP4, MOV 등 지원)`);
-        continue;
-      }
-
-      if (isVideoFile(file) && file.size > MAX_VIDEO_SIZE_BYTES) {
-        alert(
-          `${file.name}: 동영상 크기는 최대 ${(MAX_VIDEO_SIZE_BYTES / (1024 * 1024)).toFixed(0)}MB 이하여야 합니다. (현재: ${(file.size / 1024 / 1024).toFixed(1)}MB)`
-        );
-        continue;
-      }
-
-      if (!isVideoFile(file) && file.size > 15 * 1024 * 1024) {
-        alert(`${file.name}: 사진 크기는 15MB 이하여야 합니다.`);
-        continue;
-      }
-
       try {
+        if (!isSupportedMediaType(file.type, file.name)) {
+          alert(`${file.name}: 지원하지 않는 파일 형식입니다. (JPEG, PNG, WebP, GIF, HEIC, MP4, MOV 등 지원)`);
+          continue;
+        }
+
+        if (isVideoFile(file) && file.size > MAX_VIDEO_SIZE_BYTES) {
+          alert(
+            `${file.name}: 동영상 크기는 최대 ${(MAX_VIDEO_SIZE_BYTES / (1024 * 1024)).toFixed(0)}MB 이하여야 합니다. (현재: ${(file.size / 1024 / 1024).toFixed(1)}MB)`
+          );
+          continue;
+        }
+
+        if (!isVideoFile(file) && file.size > MAX_IMAGE_SIZE_BYTES) {
+          alert(`${file.name}: 사진 크기는 ${MAX_IMAGE_SIZE_MB}MB 이하여야 합니다.`);
+          continue;
+        }
+
         if (isVideoFile(file)) {
           // 1분(60초) 이내 숏츠 재생시간 검증
           const meta = await getVideoMetadata(file);
@@ -404,12 +425,14 @@ export function CommunityFeedView() {
           }
 
           const validated = await compressVideoIfNeeded(file);
-          newOptimizedFiles.push(validated as File);
-          newPreviews.push(URL.createObjectURL(validated));
+          setSelectedFiles((prev) => [...prev, validated as File]);
+          setPreviewUrls((prev) => [...prev, URL.createObjectURL(validated)]);
+          addedCount++;
         } else {
           const optimized = await optimizeImage(file, { maxDimension: 1920, quality: 0.85, mimeType: "image/webp" });
-          newOptimizedFiles.push(optimized as File);
-          newPreviews.push(URL.createObjectURL(optimized));
+          setSelectedFiles((prev) => [...prev, optimized as File]);
+          setPreviewUrls((prev) => [...prev, URL.createObjectURL(optimized)]);
+          addedCount++;
         }
       } catch (err) {
         console.warn("Media processing error:", err);
@@ -418,13 +441,21 @@ export function CommunityFeedView() {
           alert(`${file.name}: ${errMsg}`);
           continue;
         }
-        newOptimizedFiles.push(file);
-        newPreviews.push(URL.createObjectURL(file));
+        setSelectedFiles((prev) => [...prev, file]);
+        setPreviewUrls((prev) => [...prev, URL.createObjectURL(file)]);
+        addedCount++;
+      } finally {
+        // 개별 파일 처리 완료 시 카운터 감소 -> 처리가 끝난 파일부터 미리보기 즉시 렌더링
+        setProcessingMediaCount((prev) => Math.max(0, prev - 1));
       }
     }
 
-    setSelectedFiles((prev) => [...prev, ...newOptimizedFiles]);
-    setPreviewUrls((prev) => [...prev, ...newPreviews]);
+    // 파일 선택 결과 첨부된 미디어가 0개인 경우 (선택 파일 전원 거절 시)
+    if (addedCount === 0 && selectedFiles.length === 0) {
+      const reason = `선택한 ${rawFiles.length}개 파일이 모두 제외되어 첨부되지 않았습니다.`;
+      setAttachmentRejectReason(reason);
+      alert(`${reason}\n사진 없이 본문만 게시하려면 '첨부 취소'를 누르거나, 다른 사진/동영상을 다시 선택해 주세요.`);
+    }
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -432,7 +463,12 @@ export function CommunityFeedView() {
   };
 
   const handleRemoveFile = (index: number) => {
-    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+    const nextFiles = selectedFiles.filter((_, i) => i !== index);
+    setSelectedFiles(nextFiles);
+    if (nextFiles.length === 0) {
+      setHasAttemptedAttachment(false);
+      setAttachmentRejectReason(null);
+    }
     setPreviewUrls((prev) => {
       if (prev[index]) URL.revokeObjectURL(prev[index]);
       return prev.filter((_, i) => i !== index);
@@ -485,13 +521,27 @@ export function CommunityFeedView() {
     }
     if (!newContent.trim()) return;
 
+    if (processingMediaCount > 0) {
+      alert("사진/동영상 최적화 처리가 진행 중입니다. 잠시만 기다려 주세요.");
+      return;
+    }
+
+    if (hasAttemptedAttachment && selectedFiles.length === 0) {
+      alert("사진/동영상 첨부를 시도했으나 모든 파일이 제외되어 0장입니다.\n파일을 다시 첨부하시거나, '첨부 취소'를 누른 후 본문만 게시해 주세요.");
+      return;
+    }
+
     setIsPosting(true);
+    setUploadProgress({ current: 0, total: selectedFiles.length });
     const uploadedUrls: string[] = [];
 
     // Cloudflare R2 멀티 파일 순차/병렬 업로드
     if (selectedFiles.length > 0) {
       try {
-        for (const file of selectedFiles) {
+        for (let i = 0; i < selectedFiles.length; i++) {
+          const file = selectedFiles[i];
+          setUploadProgress({ current: i + 1, total: selectedFiles.length });
+
           const effectiveContentType = resolveEffectiveMimeType(file);
           const presignedRes = await fetch("/api/upload", {
             method: "POST",
@@ -505,8 +555,8 @@ export function CommunityFeedView() {
 
           if (!presignedRes.ok) {
             const errData = await presignedRes.json().catch(() => ({}));
-            const msg = errData.error || `Presigned URL 발급 실패 (${file.name})`;
-            throw new Error(msg);
+            const msg = errData.error || `Presigned URL 발급 실패`;
+            throw new Error(`[${file.name}] ${msg}`);
           }
 
           const { uploadUrl, publicUrl } = await presignedRes.json();
@@ -517,7 +567,7 @@ export function CommunityFeedView() {
           });
 
           if (!uploadRes.ok) {
-            throw new Error(`스토리지 전송 실패 (${file.name})`);
+            throw new Error(`[${file.name}] 스토리지 전송 실패 (상태 코드: ${uploadRes.status})`);
           }
 
           uploadedUrls.push(publicUrl);
@@ -528,8 +578,9 @@ export function CommunityFeedView() {
           err instanceof Error
             ? err.message
             : "사진/동영상 업로드 중 오류가 발생했습니다. 네트워크 상태를 확인 후 다시 시도해 주세요.";
-        alert(errorMsg);
+        alert(`사진/동영상 업로드에 실패하여 게시글이 등록되지 않았습니다.\n원인: ${errorMsg}`);
         setIsPosting(false);
+        setUploadProgress(null);
         return;
       }
     }
@@ -552,6 +603,10 @@ export function CommunityFeedView() {
     previewUrls.forEach((url) => URL.revokeObjectURL(url));
     setSelectedFiles([]);
     setPreviewUrls([]);
+    setProcessingMediaCount(0);
+    setUploadProgress(null);
+    setHasAttemptedAttachment(false);
+    setAttachmentRejectReason(null);
     setIsPosting(false);
     setIsUploadModalOpen(false);
 
@@ -867,23 +922,61 @@ export function CommunityFeedView() {
                   className="w-full text-xs p-3.5 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                 />
 
-                {/* 첨부된 미디어 미리보기 */}
-                {previewUrls.length > 0 && (
-                  <div className="space-y-2">
+                {/* 첨부된 미디어 미리보기 및 처리 중 상태 */}
+                {(previewUrls.length > 0 || processingMediaCount > 0 || (hasAttemptedAttachment && selectedFiles.length === 0)) && (
+                  <div className="space-y-2" data-testid="media-previews-container">
                     <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
-                      <span>첨부된 미디어 ({previewUrls.length}/5)</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          previewUrls.forEach((url) => URL.revokeObjectURL(url));
-                          setSelectedFiles([]);
-                          setPreviewUrls([]);
-                        }}
-                        className="text-rose-500 hover:text-rose-600"
-                      >
-                        전체 취소
-                      </button>
+                      <span className="flex items-center gap-1.5">
+                        <span>첨부된 미디어 ({previewUrls.length}/5)</span>
+                        {processingMediaCount > 0 && (
+                          <span className="text-blue-600 animate-pulse font-normal flex items-center gap-1">
+                            <Loader2 className="w-3 h-3 animate-spin inline" />
+                            <span>({processingMediaCount}개 변환/압축 중...)</span>
+                          </span>
+                        )}
+                      </span>
+                      {hasAttemptedAttachment && selectedFiles.length === 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setHasAttemptedAttachment(false);
+                            setAttachmentRejectReason(null);
+                          }}
+                          className="text-rose-500 hover:text-rose-600 font-bold underline"
+                        >
+                          첨부 취소 (본문만 게시)
+                        </button>
+                      ) : (
+                        previewUrls.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              previewUrls.forEach((url) => URL.revokeObjectURL(url));
+                              setSelectedFiles([]);
+                              setPreviewUrls([]);
+                              setHasAttemptedAttachment(false);
+                              setAttachmentRejectReason(null);
+                            }}
+                            className="text-rose-500 hover:text-rose-600"
+                          >
+                            전체 취소
+                          </button>
+                        )
+                      )}
                     </div>
+
+                    {hasAttemptedAttachment && selectedFiles.length === 0 && attachmentRejectReason && (
+                      <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-[11px] text-rose-700 flex items-start gap-1.5 animate-in fade-in">
+                        <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500 mt-0.5" />
+                        <div>
+                          <p className="font-semibold">{attachmentRejectReason}</p>
+                          <p className="text-[10px] text-rose-600 mt-0.5">
+                            파일 크기({MAX_IMAGE_SIZE_MB}MB)나 동영상 길이({MAX_SHORTS_MINUTES}분)를 확인해 주시거나, 본문만 등록하려면 우측 상단의 &apos;첨부 취소&apos;를 눌러주세요.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                       {previewUrls.map((url, idx) => {
                         const file = selectedFiles[idx];
@@ -892,7 +985,7 @@ export function CommunityFeedView() {
                         return (
                           <div
                             key={`${url}-${idx}`}
-                            className="relative aspect-square rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 group"
+                            className="relative aspect-square rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 group shadow-xs"
                           >
                             {isVideo ? (
                               <video src={url} className="w-full h-full object-cover" muted />
@@ -907,7 +1000,7 @@ export function CommunityFeedView() {
                             <button
                               type="button"
                               onClick={() => handleRemoveFile(idx)}
-                              className="absolute top-1 right-1 p-1 bg-black/70 text-white rounded-full hover:bg-black/90 transition-colors shadow-sm"
+                              className="absolute top-1 right-1 p-1 bg-black/70 text-white rounded-full hover:bg-black/90 transition-colors shadow-xs"
                               title="삭제"
                             >
                               <X className="w-3 h-3" />
@@ -915,6 +1008,18 @@ export function CommunityFeedView() {
                           </div>
                         );
                       })}
+
+                      {/* 미디어 처리 중 로딩 플레이스홀더 (DoD 3) */}
+                      {Array.from({ length: processingMediaCount }).map((_, pIdx) => (
+                        <div
+                          key={`processing-${pIdx}`}
+                          data-testid="processing-placeholder"
+                          className="relative aspect-square rounded-2xl overflow-hidden bg-blue-50/70 border border-dashed border-blue-300 flex flex-col items-center justify-center p-1 text-center animate-pulse"
+                        >
+                          <Loader2 className="w-5 h-5 text-blue-500 animate-spin mb-1" />
+                          <span className="text-[9px] text-blue-600 font-bold leading-tight">처리 중...</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -932,8 +1037,9 @@ export function CommunityFeedView() {
 
                   <button
                     type="button"
+                    disabled={isPosting || processingMediaCount > 0}
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center space-x-1.5 text-blue-600 hover:text-blue-700 text-xs font-bold bg-blue-50 px-3.5 py-2 rounded-xl transition-colors"
+                    className="flex items-center space-x-1.5 text-blue-600 hover:text-blue-700 disabled:opacity-50 text-xs font-bold bg-blue-50 px-3.5 py-2 rounded-xl transition-colors"
                   >
                     <Camera className="w-4 h-4" />
                     <span>사진·동영상 첨부 {selectedFiles.length > 0 ? `(${selectedFiles.length})` : ""}</span>
@@ -950,11 +1056,30 @@ export function CommunityFeedView() {
                     </button>
                     <button
                       type="submit"
-                      disabled={isPosting || !newContent.trim()}
+                      disabled={
+                        isPosting ||
+                        processingMediaCount > 0 ||
+                        !newContent.trim() ||
+                        (hasAttemptedAttachment && selectedFiles.length === 0)
+                      }
                       className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center space-x-1"
                     >
-                      <Upload className="w-3.5 h-3.5" />
-                      <span>{isPosting ? "업로드 중..." : "게시하기"}</span>
+                      {isPosting ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Upload className="w-3.5 h-3.5" />
+                      )}
+                      <span>
+                        {isPosting
+                          ? uploadProgress && uploadProgress.total > 0
+                            ? `업로드 중 (${uploadProgress.current}/${uploadProgress.total})...`
+                            : "업로드 중..."
+                          : processingMediaCount > 0
+                          ? "사진 처리 중..."
+                          : hasAttemptedAttachment && selectedFiles.length === 0
+                          ? "첨부 확인 필요"
+                          : "게시하기"}
+                      </span>
                     </button>
                   </div>
                 </div>
