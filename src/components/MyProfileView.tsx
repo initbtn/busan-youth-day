@@ -24,14 +24,21 @@ import {
   loadCachedPosts,
   cachePosts,
   loadCachedComments,
+  cacheComments,
   PostComment,
   getPostsByAuthorOrUser,
   updateCommunityPost,
   deleteCommunityPost,
+  deletePostFromSupabase,
+  updatePostInSupabase,
+  removeCommentsForPost,
+  fetchPostsFromSupabase,
+  mergeCommunityPosts,
   getMyComments,
   getPostMediaUrls,
   formatTimeAgo,
 } from "@/lib/communityPosts";
+import { createClient } from "@/lib/supabase/client";
 import { getYouthGroupMembers } from "@/data/youthGroupMembers";
 import { getPilgrimSaintById, PILGRIM_SAINTS } from "@/data/saints";
 import { DISTRICT_PARISH_MAP, AFFILIATION_ROLES, AffiliationRole } from "@/data/parishes";
@@ -85,6 +92,24 @@ export function MyProfileView() {
 
     const cachedComments = loadCachedComments();
     setCommentsMap(cachedComments);
+
+    const syncPosts = async () => {
+      try {
+        const supabase = createClient();
+        const remote = await fetchPostsFromSupabase(supabase);
+        if (remote.length > 0) {
+          setAllPosts((current) => {
+            const merged = mergeCommunityPosts(remote, current);
+            cachePosts(merged);
+            return merged;
+          });
+        }
+      } catch (err) {
+        console.warn("MyProfileView Supabase posts sync skipped:", err);
+      }
+    };
+
+    syncPosts();
   }, []);
 
   const myPosts = getPostsByAuthorOrUser(allPosts, user?.id, user?.name);
@@ -155,24 +180,44 @@ export function MyProfileView() {
   };
 
   // 게시글 수정 저장
-  const handleSaveEditPost = (postId: string) => {
-    const updated = updateCommunityPost(allPosts, postId, {
+  const handleSaveEditPost = async (postId: string) => {
+    const changes = {
       content: editContent,
       imageUrl: editImageUrl || undefined,
-    });
+    };
+    const updated = updateCommunityPost(allPosts, postId, changes);
     setAllPosts(updated);
     cachePosts(updated);
     setEditingPostId(null);
+
+    try {
+      const supabase = createClient();
+      await updatePostInSupabase(supabase, postId, changes);
+    } catch (err) {
+      console.warn("Background Supabase post update error:", err);
+    }
   };
 
   // 게시글 삭제
-  const handleDeletePost = (postId: string) => {
+  const handleDeletePost = async (postId: string) => {
     if (!confirm("게시글을 삭제하시겠습니까? 삭제 후에는 복구할 수 없습니다.")) {
       return;
     }
     const remaining = deleteCommunityPost(allPosts, postId);
     setAllPosts(remaining);
     cachePosts(remaining);
+
+    // 연관 댓글 연쇄 삭제 (Issue #88)
+    const nextComments = removeCommentsForPost(commentsMap, postId);
+    setCommentsMap(nextComments);
+    cacheComments(nextComments);
+
+    try {
+      const supabase = createClient();
+      await deletePostFromSupabase(supabase, postId);
+    } catch (err) {
+      console.warn("Background Supabase post delete error:", err);
+    }
   };
 
   // 댓글 원문으로 이동

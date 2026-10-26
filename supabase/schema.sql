@@ -98,6 +98,9 @@ ON public.posts FOR INSERT WITH CHECK (true);
 CREATE POLICY "Users can delete their own posts" 
 ON public.posts FOR DELETE USING (auth.uid() = user_id);
 
+CREATE POLICY "Users can update their own posts" 
+ON public.posts FOR UPDATE USING (auth.uid() = user_id);
+
 GRANT ALL ON public.posts TO anon, authenticated, service_role;
 
 -- 5. Reward Entries 테이블 (경품 응모)

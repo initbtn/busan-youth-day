@@ -612,7 +612,16 @@ export function CommunityFeedView() {
 
     try {
       const supabase = createClient();
-      await syncPostToSupabase(supabase, newPost);
+      const syncResult = await syncPostToSupabase(supabase, newPost);
+      if (syncResult.success) {
+        setPosts((current) => {
+          const updated = current.map((p) =>
+            p.id === newPost.id ? { ...p, isSynced: true, userId: newPost.userId } : p
+          );
+          cachePosts(updated);
+          return updated;
+        });
+      }
     } catch (err) {
       console.warn("Background Supabase sync deferred:", err);
     }
