@@ -178,6 +178,8 @@ export interface SupabaseSyncResult {
   success: boolean;
   data?: unknown;
   error?: unknown;
+  userId?: string;
+  isSynced?: boolean;
 }
 
 export async function syncPostToSupabase(
@@ -220,7 +222,6 @@ export async function syncPostToSupabase(
           const authId = authData?.user?.id;
           if (authId && isValidUuid(authId)) {
             resolvedUserId = authId;
-            post.userId = authId;
           }
         }
       } catch (authErr) {
@@ -252,8 +253,7 @@ export async function syncPostToSupabase(
       return { success: false, error };
     }
 
-    post.isSynced = true;
-    return { success: true, data };
+    return { success: true, data, userId: resolvedUserId, isSynced: true };
   } catch (err) {
     console.warn("Supabase posts sync exception:", err);
     return { success: false, error: err };

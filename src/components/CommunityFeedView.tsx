@@ -40,6 +40,7 @@ import {
   PostComment,
   loadCachedComments,
   cacheComments,
+  removeCommentsForDeletedPosts,
   formatTimeAgo,
 } from "@/lib/communityPosts";
 import { optimizeImage, isSupportedMediaType, isVideoFile, resolveEffectiveMimeType } from "@/lib/imageOptimizer";
@@ -264,6 +265,12 @@ export function CommunityFeedView() {
           setPosts((current) => {
             const merged = mergeCommunityPosts(remote, current, INITIAL_POSTS);
             cachePosts(merged);
+            const validIds = new Set(merged.map((p) => p.id));
+            setCommentsMap((prev) => {
+              const cleaned = removeCommentsForDeletedPosts(prev, validIds);
+              cacheComments(cleaned);
+              return cleaned;
+            });
             return merged;
           });
         }

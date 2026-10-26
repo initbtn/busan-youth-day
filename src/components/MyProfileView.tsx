@@ -32,6 +32,7 @@ import {
   deletePostFromSupabase,
   updatePostInSupabase,
   removeCommentsForPost,
+  removeCommentsForDeletedPosts,
   fetchPostsFromSupabase,
   mergeCommunityPosts,
   getMyComments,
@@ -101,6 +102,12 @@ export function MyProfileView() {
           setAllPosts((current) => {
             const merged = mergeCommunityPosts(remote, current);
             cachePosts(merged);
+            const validIds = new Set(merged.map((p) => p.id));
+            setCommentsMap((prev) => {
+              const cleaned = removeCommentsForDeletedPosts(prev, validIds);
+              cacheComments(cleaned);
+              return cleaned;
+            });
             return merged;
           });
         }
