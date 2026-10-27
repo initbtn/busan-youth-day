@@ -38,6 +38,8 @@ import {
   getMyComments,
   getPostMediaUrls,
   formatTimeAgo,
+  deleteComment,
+  deleteCommentFromSupabase,
 } from "@/lib/communityPosts";
 import { createClient } from "@/lib/supabase/client";
 import { getYouthGroupMembers } from "@/data/youthGroupMembers";
@@ -224,6 +226,31 @@ export function MyProfileView() {
       await deletePostFromSupabase(supabase, postId);
     } catch (err) {
       console.warn("Background Supabase post delete error:", err);
+    }
+  };
+
+  // 댓글 삭제 (Issue #89)
+  const handleDeleteMyComment = async (
+    postId: string,
+    commentId: string,
+    e?: React.MouseEvent
+  ) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    if (!confirm("댓글을 삭제하시겠습니까? 삭제 후에는 복구할 수 없습니다.")) {
+      return;
+    }
+
+    const updated = deleteComment(commentsMap, postId, commentId);
+    setCommentsMap(updated);
+    cacheComments(updated);
+
+    try {
+      const supabase = createClient();
+      await deleteCommentFromSupabase(supabase, commentId);
+    } catch (err) {
+      console.warn("Background Supabase comment delete error:", err);
     }
   };
 
@@ -799,10 +826,20 @@ export function MyProfileView() {
                   <span className="text-[10px] text-slate-400 font-semibold">
                     {formatTimeAgo(comment.createdAt)}
                   </span>
-                  <span className="text-[10px] text-orange-600 font-bold flex items-center space-x-0.5 group-hover:translate-x-0.5 transition-transform">
-                    <span>해당 게시글 이동</span>
-                    <ChevronRight className="w-3 h-3" />
-                  </span>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      onClick={(e) => handleDeleteMyComment(comment.postId, comment.id, e)}
+                      className="text-slate-400 hover:text-red-600 p-1 transition-colors"
+                      title="댓글 삭제"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="text-[10px] text-orange-600 font-bold flex items-center space-x-0.5 group-hover:translate-x-0.5 transition-transform">
+                      <span>해당 게시글 이동</span>
+                      <ChevronRight className="w-3 h-3" />
+                    </span>
+                  </div>
                 </div>
 
                 <p className="text-slate-800 font-medium leading-relaxed">
