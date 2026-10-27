@@ -12,6 +12,7 @@ export interface CommunityPost {
   createdAt?: string;
   userId?: string;
   isOfficial?: boolean;
+  isSynced?: boolean;
 }
 
 export function getPostMediaUrls(post: Partial<CommunityPost>): string[] {
@@ -155,6 +156,7 @@ export function createPostPayload(params: CreatePostParams): CommunityPost {
     createdAt: new Date().toISOString(),
     userId: params.userId,
     isOfficial: isOfficialRole(params.role),
+    isSynced: false,
   };
 }
 
@@ -176,6 +178,8 @@ export interface SupabaseSyncResult {
   success: boolean;
   data?: unknown;
   error?: unknown;
+  userId?: string;
+  isSynced?: boolean;
 }
 
 export async function syncPostToSupabase(
@@ -206,8 +210,27 @@ export async function syncPostToSupabase(
     if (post.id) {
       payload.id = post.id;
     }
-    if (isValidUuid(post.userId)) {
-      payload.user_id = post.userId;
+
+    let resolvedUserId = isValidUuid(post.userId) ? post.userId : undefined;
+    if (!resolvedUserId) {
+      try {
+        const authClient = supabaseClient as {
+          auth?: { getUser?: () => Promise<{ data?: { user?: { id?: string } } }> };
+        };
+        if (typeof authClient.auth?.getUser === "function") {
+          const { data: authData } = await authClient.auth.getUser();
+          const authId = authData?.user?.id;
+          if (authId && isValidUuid(authId)) {
+            resolvedUserId = authId;
+          }
+        }
+      } catch (authErr) {
+        console.warn("Failed to retrieve auth user id for post sync:", authErr);
+      }
+    }
+
+    if (resolvedUserId) {
+      payload.user_id = resolvedUserId;
     }
 
     const client = supabaseClient as {
@@ -230,7 +253,7 @@ export async function syncPostToSupabase(
       return { success: false, error };
     }
 
-    return { success: true, data };
+    return { success: true, data, userId: resolvedUserId, isSynced: true };
   } catch (err) {
     console.warn("Supabase posts sync exception:", err);
     return { success: false, error: err };
@@ -276,10 +299,77 @@ export async function fetchPostsFromSupabase(supabaseClient: unknown): Promise<C
       createdAt: row.created_at || undefined,
       userId: row.user_id || undefined,
       isLiked: false,
+      isSynced: true,
     }));
   } catch (err) {
     console.warn("Exception during fetchPostsFromSupabase:", err);
     return [];
+  }
+}
+
+export async function deletePostFromSupabase(
+  supabaseClient: unknown,
+  postId: string
+): Promise<SupabaseSyncResult> {
+  if (!supabaseClient || typeof supabaseClient !== "object" || !postId) {
+    return { success: false, error: "Supabase client or postId not provided" };
+  }
+
+  try {
+    const client = supabaseClient as {
+      from: (table: string) => {
+        delete: () => {
+          eq: (col: string, val: string) => Promise<{ data: unknown; error: unknown }>;
+        };
+      };
+    };
+
+    const { data, error } = await client.from("posts").delete().eq("id", postId);
+    if (error) {
+      console.warn("Supabase posts delete error:", error);
+      return { success: false, error };
+    }
+
+    return { success: true, data };
+  } catch (err) {
+    console.warn("Supabase posts delete exception:", err);
+    return { success: false, error: err };
+  }
+}
+
+export async function updatePostInSupabase(
+  supabaseClient: unknown,
+  postId: string,
+  changes: Partial<Pick<CommunityPost, "content" | "imageUrl" | "mediaUrls">>
+): Promise<SupabaseSyncResult> {
+  if (!supabaseClient || typeof supabaseClient !== "object" || !postId) {
+    return { success: false, error: "Supabase client or postId not provided" };
+  }
+
+  try {
+    const payload: Record<string, unknown> = {};
+    if (changes.content !== undefined) payload.content = changes.content;
+    if (changes.imageUrl !== undefined) payload.image_url = changes.imageUrl;
+    if (changes.mediaUrls !== undefined) payload.media_urls = changes.mediaUrls;
+
+    const client = supabaseClient as {
+      from: (table: string) => {
+        update: (data: unknown) => {
+          eq: (col: string, val: string) => Promise<{ data: unknown; error: unknown }>;
+        };
+      };
+    };
+
+    const { data, error } = await client.from("posts").update(payload).eq("id", postId);
+    if (error) {
+      console.warn("Supabase posts update error:", error);
+      return { success: false, error };
+    }
+
+    return { success: true, data };
+  } catch (err) {
+    console.warn("Supabase posts update exception:", err);
+    return { success: false, error: err };
   }
 }
 
@@ -309,8 +399,20 @@ export function mergeCommunityPosts(
   // 1. Initial 기본 게시글 등록
   initialFallback.forEach((p) => map.set(p.id, p));
 
-  // 2. 로컬 캐시 게시글 등록 (사용자가 오프라인/최근 작성 및 좋아요 토글한 것)
-  localPosts.forEach((p) => map.set(p.id, p));
+  // 원격 게시글 ID 집합
+  const remoteIdSet = new Set(remotePosts.map((p) => p.id));
+  const hasRemote = remotePosts.length > 0;
+
+  // 2. 로컬 캐시 게시글 등록
+  // - remotePosts가 있는 경우: 이전에 서버에 동기화 완료되었던 글(isSynced: true)인데 원격에 없으면
+  //   서버에서 삭제된 유령 글이므로 제외한다. 아직 서버에 안 올라간 글(isSynced !== true)은 보존한다.
+  // - remotePosts가 비어 있는 경우(초기 마운트): 로컬 글 전체 유지.
+  localPosts.forEach((p) => {
+    if (hasRemote && p.isSynced === true && !remoteIdSet.has(p.id)) {
+      return;
+    }
+    map.set(p.id, p);
+  });
 
   // 3. Supabase 원격 게시글 등록
   remotePosts.forEach((p) => {
@@ -330,6 +432,7 @@ export function mergeCommunityPosts(
 
     map.set(p.id, {
       ...p,
+      isSynced: true,
       likes: resolvedLikes,
       isLiked: resolvedIsLiked,
     });
@@ -434,6 +537,36 @@ export function deleteCommunityPost(
   postId: string
 ): CommunityPost[] {
   return posts.filter((p) => p.id !== postId);
+}
+
+/**
+ * 특정 게시글에 달린 댓글 목록 연쇄 삭제
+ */
+export function removeCommentsForPost(
+  commentsMap: Record<string, PostComment[]>,
+  postId: string
+): Record<string, PostComment[]> {
+  if (!commentsMap) return {};
+  const next = { ...commentsMap };
+  delete next[postId];
+  return next;
+}
+
+/**
+ * 삭제된 게시글들에 달린 고아 댓글 일괄 정리
+ */
+export function removeCommentsForDeletedPosts(
+  commentsMap: Record<string, PostComment[]>,
+  existingPostIds: Set<string>
+): Record<string, PostComment[]> {
+  if (!commentsMap) return {};
+  const next: Record<string, PostComment[]> = {};
+  for (const [postId, comments] of Object.entries(commentsMap)) {
+    if (existingPostIds.has(postId)) {
+      next[postId] = comments;
+    }
+  }
+  return next;
 }
 
 /**

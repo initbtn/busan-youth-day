@@ -40,6 +40,7 @@ import {
   PostComment,
   loadCachedComments,
   cacheComments,
+  removeCommentsForDeletedPosts,
   formatTimeAgo,
 } from "@/lib/communityPosts";
 import { optimizeImage, isSupportedMediaType, isVideoFile, resolveEffectiveMimeType } from "@/lib/imageOptimizer";
@@ -264,6 +265,12 @@ export function CommunityFeedView() {
           setPosts((current) => {
             const merged = mergeCommunityPosts(remote, current, INITIAL_POSTS);
             cachePosts(merged);
+            const validIds = new Set(merged.map((p) => p.id));
+            setCommentsMap((prev) => {
+              const cleaned = removeCommentsForDeletedPosts(prev, validIds);
+              cacheComments(cleaned);
+              return cleaned;
+            });
             return merged;
           });
         }
@@ -612,7 +619,16 @@ export function CommunityFeedView() {
 
     try {
       const supabase = createClient();
-      await syncPostToSupabase(supabase, newPost);
+      const syncResult = await syncPostToSupabase(supabase, newPost);
+      if (syncResult.success) {
+        setPosts((current) => {
+          const updated = current.map((p) =>
+            p.id === newPost.id ? { ...p, isSynced: true, userId: newPost.userId } : p
+          );
+          cachePosts(updated);
+          return updated;
+        });
+      }
     } catch (err) {
       console.warn("Background Supabase sync deferred:", err);
     }
