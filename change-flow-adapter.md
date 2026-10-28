@@ -14,6 +14,7 @@
 | **토큰(⓪⑤⑥⑧)** | pass show github/gh-token (WARM 상태 필요) |
 | **verify(③)** | `npm test` 단위/계약 테스트 전수 통과, 클라이언트 앱 Playwright E2E/단위 테스트 (`e2e/*.spec.ts`), `npm run build` 및 TypeScript/ESLint 검증, `make env-check` |
 | **ADR(②)** | `docs/architecture-decision-record/` |
+| **DB 마이그레이션(②)** | Supabase 타임스탬프 마이그레이션 (`supabase/migrations/` 단일 정본, `docs/operations/supabase-migration.md` 런북 준수) |
 | **리뷰 차원(⑦)** | 디자인 일관성(TSD 토큰), 보안(Supabase RLS, Presigned URL 유효시간), 기능 무결성, 프로비저닝 멱등성 |
 | **커밋(④)** | 한국어, prefix `feat:`/`docs:`/`fix:`/`chore:`/`style:` |
 | **PR(⑥)** | PR 생성 시 closes 연동 |

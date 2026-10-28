@@ -1,3 +1,13 @@
+-- ==============================================================================
+-- 2026 부산교구 젊은이의 날 (BYD) — Supabase 데이터베이스 전체 참조 스키마
+--
+-- [단일 정본(Single Source of Truth) 안내]
+-- 본 스키마의 정본은 `supabase/migrations/` 디렉터리 내 타임스탬프 마이그레이션 파일들입니다:
+--   1. `supabase/migrations/20261005000000_baseline_schema.sql` (기본 스키마 5개 테이블)
+--   2. `supabase/migrations/20261028000000_add_comments_table.sql` (댓글 저장소 테이블)
+-- 본 파일은 전체 통합 참조 및 로컬 빠른 초기화용 합본 파일로 유지됩니다.
+-- ==============================================================================
+
 -- 1. Profiles 테이블 (사용자 프로필)
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
