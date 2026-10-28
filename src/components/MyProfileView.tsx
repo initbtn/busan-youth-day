@@ -42,7 +42,6 @@ import {
   deleteCommentFromSupabase,
   isCommentAuthor,
 } from "@/lib/communityPosts";
-import { createClient } from "@/lib/supabase/client";
 import { getYouthGroupMembers } from "@/data/youthGroupMembers";
 import { getPilgrimSaintById, PILGRIM_SAINTS } from "@/data/saints";
 import { DISTRICT_PARISH_MAP, AFFILIATION_ROLES, AffiliationRole } from "@/data/parishes";
@@ -99,8 +98,7 @@ export function MyProfileView() {
 
     const syncPosts = async () => {
       try {
-        const supabase = createClient();
-        const remote = await fetchPostsFromSupabase(supabase);
+        const remote = await fetchPostsFromSupabase();
         if (remote.length > 0) {
           setAllPosts((current) => {
             const merged = mergeCommunityPosts(remote, current);
@@ -201,10 +199,9 @@ export function MyProfileView() {
     setEditingPostId(null);
 
     try {
-      const supabase = createClient();
-      await updatePostInSupabase(supabase, postId, changes);
+      await updatePostInSupabase(undefined, postId, changes);
     } catch (err) {
-      console.warn("Background Supabase post update error:", err);
+      console.warn("Background gateway post update error:", err);
     }
   };
 
@@ -223,10 +220,9 @@ export function MyProfileView() {
     cacheComments(nextComments);
 
     try {
-      const supabase = createClient();
-      await deletePostFromSupabase(supabase, postId);
+      await deletePostFromSupabase(undefined, postId);
     } catch (err) {
-      console.warn("Background Supabase post delete error:", err);
+      console.warn("Background gateway post delete error:", err);
     }
   };
 
@@ -251,13 +247,12 @@ export function MyProfileView() {
     cacheComments(updated);
 
     try {
-      const supabase = createClient();
-      const res = await deleteCommentFromSupabase(supabase, comment.id);
+      const res = await deleteCommentFromSupabase(undefined, comment.id);
       if (!res.success) {
-        console.warn("Background Supabase comment delete unsuccessful:", res.error);
+        console.warn("Background gateway comment delete unsuccessful:", res.error);
       }
     } catch (err) {
-      console.warn("Background Supabase comment delete error:", err);
+      console.warn("Background gateway comment delete error:", err);
     }
   };
 

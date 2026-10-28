@@ -25,6 +25,26 @@ export function getPublicUrl(key: string): string {
 }
 
 /**
+ * Cloudflare R2 버킷에 서버에서 직접 바이너리 버퍼 업로드 (Next.js 게이트웨이 프록시 전용)
+ */
+export async function uploadBufferToR2(
+  buffer: Buffer | Uint8Array,
+  key: string,
+  contentType: string
+): Promise<{ publicUrl: string; key: string }> {
+  const command = new PutObjectCommand({
+    Bucket: process.env.R2_BUCKET_NAME,
+    Key: key,
+    Body: buffer,
+    ContentType: contentType,
+  });
+
+  await r2Client.send(command);
+  const publicUrl = getPublicUrl(key);
+  return { publicUrl, key };
+}
+
+/**
  * Cloudflare R2 업로드를 위한 Presigned URL 발급
  * @param fileName 저장할 파일명/키 (예: posts/unique-id.jpg)
  * @param contentType 파일 MIME 타입 (예: image/jpeg)

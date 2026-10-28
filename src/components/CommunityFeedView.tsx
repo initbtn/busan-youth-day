@@ -22,7 +22,6 @@ import {
   Loader2,
 } from "lucide-react";
 import { useUser } from "@/context/UserContext";
-import { createClient } from "@/lib/supabase/client";
 import {
   CommunityPost,
   INITIAL_POSTS,
@@ -30,7 +29,6 @@ import {
   cachePosts,
   createPostPayload,
   syncPostToSupabase,
-  fetchPostsFromSupabase,
   mergeCommunityPosts,
   isOfficialRole,
   FeedSortOrder,
@@ -46,8 +44,9 @@ import {
   deleteComment,
   deleteCommentFromSupabase,
   syncCommentToSupabase,
-  fetchCommentsFromSupabase,
   generateUuid,
+  fetchPostsViaGateway,
+  fetchCommentsViaGateway,
 } from "@/lib/communityPosts";
 import { optimizeImage, isSupportedMediaType, isVideoFile, resolveEffectiveMimeType } from "@/lib/imageOptimizer";
 import {
@@ -265,8 +264,7 @@ export function CommunityFeedView() {
 
     const syncWithSupabase = async () => {
       try {
-        const supabase = createClient();
-        const remote = await fetchPostsFromSupabase(supabase);
+        const remote = await fetchPostsViaGateway();
         if (remote.length > 0) {
           setPosts((current) => {
             const merged = mergeCommunityPosts(remote, current, INITIAL_POSTS);
@@ -281,7 +279,7 @@ export function CommunityFeedView() {
           });
         }
 
-        const remoteComments = await fetchCommentsFromSupabase(supabase);
+        const remoteComments = await fetchCommentsViaGateway();
         if (remoteComments && Object.keys(remoteComments).length > 0) {
           setCommentsMap((prev) => {
             const merged: Record<string, PostComment[]> = { ...prev };
@@ -301,7 +299,7 @@ export function CommunityFeedView() {
           });
         }
       } catch (err) {
-        console.warn("Supabase initial sync skipped (using cached/fallback):", err);
+        console.warn("BFF initial sync skipped (using cached/fallback):", err);
       }
     };
 
@@ -356,8 +354,7 @@ export function CommunityFeedView() {
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      const supabase = createClient();
-      const remote = await fetchPostsFromSupabase(supabase);
+      const remote = await fetchPostsViaGateway();
       const cached = loadCachedPosts();
       const merged = mergeCommunityPosts(remote, cached, INITIAL_POSTS);
       setPosts(merged);
@@ -411,10 +408,9 @@ export function CommunityFeedView() {
     }));
 
     try {
-      const supabase = createClient();
-      await syncCommentToSupabase(supabase, newComment);
+      await syncCommentToSupabase(undefined, newComment);
     } catch (err) {
-      console.warn("Failed to sync comment to Supabase:", err);
+      console.warn("Failed to sync comment via gateway:", err);
     }
   };
 
@@ -428,13 +424,12 @@ export function CommunityFeedView() {
     });
 
     try {
-      const supabase = createClient();
-      const res = await deleteCommentFromSupabase(supabase, commentId);
+      const res = await deleteCommentFromSupabase(undefined, commentId);
       if (!res.success) {
-        console.warn("Supabase comment delete returned unsuccessful:", res.error);
+        console.warn("Comment delete returned unsuccessful:", res.error);
       }
     } catch (err) {
-      console.warn("Failed to delete comment from Supabase:", err);
+      console.warn("Failed to delete comment via gateway:", err);
     }
   };
 
@@ -604,33 +599,23 @@ export function CommunityFeedView() {
           setUploadProgress({ current: i + 1, total: selectedFiles.length });
 
           const effectiveContentType = resolveEffectiveMimeType(file);
-          const presignedRes = await fetch("/api/upload", {
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("fileSize", String(file.size));
+          formData.append("contentType", effectiveContentType);
+
+          const uploadRes = await fetch("/api/upload", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              fileName: file.name,
-              contentType: effectiveContentType,
-              fileSize: file.size,
-            }),
-          });
-
-          if (!presignedRes.ok) {
-            const errData = await presignedRes.json().catch(() => ({}));
-            const msg = errData.error || `Presigned URL 발급 실패`;
-            throw new Error(`[${file.name}] ${msg}`);
-          }
-
-          const { uploadUrl, publicUrl } = await presignedRes.json();
-          const uploadRes = await fetch(uploadUrl, {
-            method: "PUT",
-            headers: { "Content-Type": effectiveContentType },
-            body: file,
+            body: formData, // formData includes file and fileSize
           });
 
           if (!uploadRes.ok) {
-            throw new Error(`[${file.name}] 스토리지 전송 실패 (상태 코드: ${uploadRes.status})`);
+            const errData = await uploadRes.json().catch(() => ({}));
+            const msg = errData.error || `스토리지 전송 실패 (상태 코드: ${uploadRes.status})`;
+            throw new Error(`[${file.name}] ${msg}`);
           }
 
+          const { publicUrl } = await uploadRes.json();
           uploadedUrls.push(publicUrl);
         }
       } catch (err) {
@@ -672,8 +657,7 @@ export function CommunityFeedView() {
     setIsUploadModalOpen(false);
 
     try {
-      const supabase = createClient();
-      const syncResult = await syncPostToSupabase(supabase, newPost);
+      const syncResult = await syncPostToSupabase(undefined, newPost);
       if (syncResult.success) {
         setPosts((current) => {
           const updated = current.map((p) =>
@@ -684,7 +668,7 @@ export function CommunityFeedView() {
         });
       }
     } catch (err) {
-      console.warn("Background Supabase sync deferred:", err);
+      console.warn("Background gateway sync deferred:", err);
     }
   };
 
