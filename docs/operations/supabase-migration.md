@@ -26,8 +26,7 @@ supabase/
 ├── config.toml                     # Supabase CLI 프로젝트 설정 (project_id: busan-youth-day)
 ├── schema.sql                      # 통합 참조용 전체 합본 스키마 (읽기 전용 참조)
 └── migrations/                     # [단일 정본] 마이그레이션 이력
-    ├── 20261005000000_baseline_schema.sql      # 초기 운영 DB 기준선 스키마 (테이블 5개)
-    └── 20261028000000_add_comments_table.sql   # 댓글 저장소 테이블 (Issue #89)
+    └── 20261005000000_baseline_schema.sql      # 초기 운영 DB 기준선 스키마 (기본 5개 테이블)
 ```
 
 - 파일명 형식: `<YYYYMMDDHHMMSS>_<작업내용_스네이크케이스>.sql`
@@ -112,14 +111,14 @@ npx supabase db push
 마이그레이션 실행 후 새로 추가/변경된 테이블 및 컬럼, 인덱스, RLS 정책이 정상 생성되었는지 검증합니다.
 
 ```sql
--- 신규 테이블/컬럼 존재 검증 (예: comments)
+-- 신규 테이블/컬럼 존재 검증 (예: <target_table>)
 SELECT 
     column_name, 
     data_type, 
     is_nullable, 
     column_default 
 FROM information_schema.columns 
-WHERE table_schema = 'public' AND table_name = 'comments'
+WHERE table_schema = 'public' AND table_name = '<target_table>'
 ORDER BY ordinal_position;
 
 -- RLS 정책 정상 등록 검증
@@ -128,7 +127,7 @@ SELECT
     cmd, 
     qual 
 FROM pg_policies 
-WHERE schemaname = 'public' AND table_name = 'comments';
+WHERE schemaname = 'public' AND table_name = '<target_table>';
 ```
 
 ---
