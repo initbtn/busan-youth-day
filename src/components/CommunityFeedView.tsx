@@ -47,6 +47,7 @@ import {
   deleteCommentFromSupabase,
   syncCommentToSupabase,
   fetchCommentsFromSupabase,
+  generateUuid,
 } from "@/lib/communityPosts";
 import { optimizeImage, isSupportedMediaType, isVideoFile, resolveEffectiveMimeType } from "@/lib/imageOptimizer";
 import {
@@ -378,24 +379,13 @@ export function CommunityFeedView() {
     });
   };
 
-  const generateCommentId = (): string => {
-    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-      return crypto.randomUUID();
-    }
-    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-      const r = (Math.random() * 16) | 0;
-      const v = c === "x" ? r : (r & 0x3) | 0x8;
-      return v.toString(16);
-    });
-  };
-
   const handleCommentSubmit = async (postId: string, e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const text = (commentInputTexts[postId] || "").trim();
     if (!text) return;
 
     const newComment: PostComment = {
-      id: generateCommentId(),
+      id: generateUuid(),
       postId,
       author: user?.name || "참가 청년",
       parish: user?.parish || "부산",
@@ -439,7 +429,10 @@ export function CommunityFeedView() {
 
     try {
       const supabase = createClient();
-      await deleteCommentFromSupabase(supabase, commentId);
+      const res = await deleteCommentFromSupabase(supabase, commentId);
+      if (!res.success) {
+        console.warn("Supabase comment delete returned unsuccessful:", res.error);
+      }
     } catch (err) {
       console.warn("Failed to delete comment from Supabase:", err);
     }

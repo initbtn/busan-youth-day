@@ -121,7 +121,7 @@ export interface CreatePostParams {
   userId?: string;
 }
 
-function generateUuid(): string {
+export function generateUuid(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
   }
@@ -608,8 +608,8 @@ export function isCommentAuthor(
   currentUserId?: string,
   currentUserName?: string
 ): boolean {
-  if (currentUserId && comment.userId && comment.userId === currentUserId) {
-    return true;
+  if (comment.userId) {
+    return Boolean(currentUserId && comment.userId === currentUserId);
   }
   if (currentUserName && comment.author && comment.author.trim() === currentUserName.trim()) {
     return true;

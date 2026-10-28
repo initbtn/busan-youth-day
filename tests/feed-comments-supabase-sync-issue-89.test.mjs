@@ -92,12 +92,25 @@ describe("소통피드 댓글 삭제 및 Supabase 원격 동기화 무결성 검
       createdAt: new Date().toISOString(),
     };
 
-    // 1. 내 댓글 판별 (userId 일치 또는 이름 일치)
+    // 1. 내 댓글 판별 (userId 일치)
     assert.equal(isCommentAuthor(myComment, "user-123", "김마리아"), true);
     assert.equal(isCommentAuthor(myComment, "user-123", "다른이름"), true);
-    assert.equal(isCommentAuthor(myComment, undefined, "김마리아"), true);
+    // userId가 존재하는 댓글은 타인이 이름만 같아도 삭제 불가 (Finding 1 보안 가드)
+    assert.equal(isCommentAuthor(myComment, "user-other", "김마리아"), false);
+    assert.equal(isCommentAuthor(myComment, undefined, "김마리아"), false);
 
-    // 2. 타인 댓글 판별
+    // 2. userId가 없는 레거시 댓글은 작성자 이름으로 판별
+    const legacyComment = {
+      id: "comm-3",
+      postId: "post-1",
+      author: "김마리아",
+      content: "레거시 댓글",
+      createdAt: new Date().toISOString(),
+    };
+    assert.equal(isCommentAuthor(legacyComment, undefined, "김마리아"), true);
+    assert.equal(isCommentAuthor(legacyComment, "user-999", "김마리아"), true);
+
+    // 3. 타인 댓글 판별
     assert.equal(isCommentAuthor(otherComment, "user-123", "김마리아"), false);
     assert.equal(isCommentAuthor(otherComment, undefined, "김마리아"), false);
   });
@@ -119,6 +132,7 @@ describe("소통피드 댓글 삭제 및 Supabase 원격 동기화 무결성 검
     // MyProfileView 검증
     assert.match(profileContent, /deleteCommentFromSupabase/, "마이페이지에 deleteCommentFromSupabase가 연결되어야 합니다.");
     assert.match(profileContent, /deleteComment/, "마이페이지에 댓글 삭제 함수가 연결되어야 합니다.");
+    assert.match(profileContent, /isCommentAuthor/, "마이페이지에 isCommentAuthor를 통한 삭제 권한 가드가 연결되어야 합니다.");
   });
 
   test("DoD 4: supabase/schema.sql에 comments 테이블 및 ON DELETE CASCADE 외래키, RLS 정책이 명세되어 있다", () => {

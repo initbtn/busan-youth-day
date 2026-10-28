@@ -40,6 +40,7 @@ import {
   formatTimeAgo,
   deleteComment,
   deleteCommentFromSupabase,
+  isCommentAuthor,
 } from "@/lib/communityPosts";
 import { createClient } from "@/lib/supabase/client";
 import { getYouthGroupMembers } from "@/data/youthGroupMembers";
@@ -231,24 +232,30 @@ export function MyProfileView() {
 
   // 댓글 삭제 (Issue #89)
   const handleDeleteMyComment = async (
-    postId: string,
-    commentId: string,
+    comment: PostComment,
     e?: React.MouseEvent
   ) => {
     if (e) {
       e.stopPropagation();
     }
+    if (!isCommentAuthor(comment, user?.id, user?.name)) {
+      alert("본인이 작성한 댓글만 삭제할 수 있습니다.");
+      return;
+    }
     if (!confirm("댓글을 삭제하시겠습니까? 삭제 후에는 복구할 수 없습니다.")) {
       return;
     }
 
-    const updated = deleteComment(commentsMap, postId, commentId);
+    const updated = deleteComment(commentsMap, comment.postId, comment.id);
     setCommentsMap(updated);
     cacheComments(updated);
 
     try {
       const supabase = createClient();
-      await deleteCommentFromSupabase(supabase, commentId);
+      const res = await deleteCommentFromSupabase(supabase, comment.id);
+      if (!res.success) {
+        console.warn("Background Supabase comment delete unsuccessful:", res.error);
+      }
     } catch (err) {
       console.warn("Background Supabase comment delete error:", err);
     }
@@ -827,14 +834,16 @@ export function MyProfileView() {
                     {formatTimeAgo(comment.createdAt)}
                   </span>
                   <div className="flex items-center space-x-2">
-                    <button
-                      type="button"
-                      onClick={(e) => handleDeleteMyComment(comment.postId, comment.id, e)}
-                      className="text-slate-400 hover:text-red-600 p-1 transition-colors"
-                      title="댓글 삭제"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    {isCommentAuthor(comment, user?.id, user?.name) && (
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteMyComment(comment, e)}
+                        className="text-slate-400 hover:text-red-600 p-1 transition-colors"
+                        title="댓글 삭제"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                     <span className="text-[10px] text-orange-600 font-bold flex items-center space-x-0.5 group-hover:translate-x-0.5 transition-transform">
                       <span>해당 게시글 이동</span>
                       <ChevronRight className="w-3 h-3" />
