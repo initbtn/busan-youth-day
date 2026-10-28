@@ -3,20 +3,23 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 
-describe("Supabase 마이그레이션 단일 정본 및 운영 런북 검증 (Issue #91)", () => {
+describe("Supabase 마이그레이션 단일 정본 및 운영 런북 검증 (Issue #91, #116)", () => {
   const migrationsDir = path.resolve("supabase/migrations");
   const baselineSqlPath = path.join(migrationsDir, "20261005000000_baseline_schema.sql");
+  const commentsSqlPath = path.join(migrationsDir, "20261029000000_add_comments_table.sql");
   const schemaSqlPath = path.resolve("supabase/schema.sql");
   const configTomlPath = path.resolve("supabase/config.toml");
   const runbookPath = path.resolve("docs/operations/supabase-migration.md");
   const adapterPath = path.resolve("change-flow-adapter.md");
   const adrPath = path.resolve("docs/architecture-decision-record/2026-10-29-supabase-migration-management.md");
 
-  test("DoD 1: supabase/migrations 내 기준선 마이그레이션 파일 무결성 검증", () => {
+  test("DoD 1: supabase/migrations 내 기준선 및 댓글 마이그레이션 파일 무결성 검증", () => {
     assert.ok(fs.existsSync(migrationsDir), "supabase/migrations 디렉터리가 존재해야 합니다.");
     assert.ok(fs.existsSync(baselineSqlPath), "초기 기준선 마이그레이션 파일이 존재해야 합니다.");
+    assert.ok(fs.existsSync(commentsSqlPath), "댓글 추가 마이그레이션 파일이 존재해야 합니다.");
 
     const baselineSql = fs.readFileSync(baselineSqlPath, "utf-8");
+    const commentsSql = fs.readFileSync(commentsSqlPath, "utf-8");
 
     // 기준선 테이블 5개 정의 검증
     assert.match(baselineSql, /CREATE TABLE IF NOT EXISTS public\.profiles/);
@@ -32,6 +35,14 @@ describe("Supabase 마이그레이션 단일 정본 및 운영 런북 검증 (Is
     assert.match(baselineSql, /ALTER TABLE public\.stamps ENABLE ROW LEVEL SECURITY;/);
     assert.match(baselineSql, /ALTER TABLE public\.posts ENABLE ROW LEVEL SECURITY;/);
     assert.match(baselineSql, /ALTER TABLE public\.reward_entries ENABLE ROW LEVEL SECURITY;/);
+
+    // 댓글 테이블 1개 정의 및 RLS/GRANT 검증 (Issue #116)
+    assert.match(commentsSql, /CREATE TABLE IF NOT EXISTS public\.comments/);
+    assert.match(commentsSql, /ALTER TABLE public\.comments ENABLE ROW LEVEL SECURITY;/);
+    assert.match(commentsSql, /CREATE POLICY "Comments are viewable by everyone"/);
+    assert.match(commentsSql, /CREATE POLICY "Anyone can create comments"/);
+    assert.match(commentsSql, /CREATE POLICY "Users can delete their own comments"/);
+    assert.match(commentsSql, /GRANT ALL ON public\.comments TO anon, authenticated, service_role;/);
   });
 
   test("DoD 2: 운영 적용 런북 (docs/operations/supabase-migration.md) 필수 단계 검증", () => {

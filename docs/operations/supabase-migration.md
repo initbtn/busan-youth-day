@@ -26,7 +26,8 @@ supabase/
 ├── config.toml                     # Supabase CLI 프로젝트 설정 (project_id: busan-youth-day)
 ├── schema.sql                      # 통합 참조용 전체 합본 스키마 (읽기 전용 참조)
 └── migrations/                     # [단일 정본] 마이그레이션 이력
-    └── 20261005000000_baseline_schema.sql      # 초기 운영 DB 기준선 스키마 (기본 5개 테이블)
+    ├── 20261005000000_baseline_schema.sql      # 초기 운영 DB 기준선 스키마 (기본 5개 테이블)
+    └── 20261029000000_add_comments_table.sql   # 댓글 저장소 테이블 (Issue #89, #116)
 ```
 
 - 파일명 형식: `<YYYYMMDDHHMMSS>_<작업내용_스네이크케이스>.sql`
