@@ -40,6 +40,7 @@ describe("Supabase 마이그레이션 단일 정본 및 운영 런북 검증 (Is
     assert.match(commentsSql, /CREATE TABLE IF NOT EXISTS public\.comments/);
     assert.match(commentsSql, /ALTER TABLE public\.comments ENABLE ROW LEVEL SECURITY;/);
     assert.match(commentsSql, /CREATE POLICY "Comments are viewable by everyone"/);
+    assert.match(commentsSql, /CREATE POLICY "Anyone can create comments"/);
     assert.match(commentsSql, /CREATE POLICY "Users can delete their own comments"/);
     assert.match(commentsSql, /GRANT ALL ON public\.comments TO anon, authenticated, service_role;/);
   });
