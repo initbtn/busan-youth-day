@@ -38,6 +38,10 @@ export async function PATCH(
       payload.likes = body.likes;
     }
 
+    if (Object.keys(payload).length === 0) {
+      return NextResponse.json({ error: "No fields to update" }, { status: 400 });
+    }
+
     const { data, error } = await supabase
       .from("posts")
       .update(payload)

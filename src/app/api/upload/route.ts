@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const contentType = file.type;
+      const contentType = (formData.get("contentType") as string) || file.type;
       if (!ALLOWED_MIME_TYPES.includes(contentType)) {
         return NextResponse.json(
           { error: "Only image (jpeg, png, webp, gif) and video (mp4, webm, mov) files are allowed" },
