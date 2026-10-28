@@ -121,7 +121,7 @@ export interface CreatePostParams {
   userId?: string;
 }
 
-function generateUuid(): string {
+export function generateUuid(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
   }
@@ -458,6 +458,7 @@ export interface PostComment {
   role: string;
   content: string;
   createdAt: string;
+  userId?: string;
 }
 
 export const POST_COMMENTS_STORAGE_KEY = "byd2026_post_comments";
@@ -597,5 +598,206 @@ export function getMyComments(
   });
 
   return results;
+}
+
+/**
+ * 댓글 작성자 본인 여부 판별 (userId 일치 또는 이름 일치)
+ */
+export function isCommentAuthor(
+  comment: PostComment,
+  currentUserId?: string,
+  currentUserName?: string
+): boolean {
+  if (comment.userId) {
+    return Boolean(currentUserId && comment.userId === currentUserId);
+  }
+  if (currentUserName && comment.author && comment.author.trim() === currentUserName.trim()) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * 단일 댓글 삭제 (로컬 맵 갱신)
+ */
+export function deleteComment(
+  commentsMap: Record<string, PostComment[]>,
+  postId: string,
+  commentId: string
+): Record<string, PostComment[]> {
+  if (!commentsMap || !commentsMap[postId]) return commentsMap;
+  const filtered = commentsMap[postId].filter((c) => c.id !== commentId);
+  return {
+    ...commentsMap,
+    [postId]: filtered,
+  };
+}
+
+/**
+ * Supabase 원격 comments 테이블에 댓글 동기화 저장
+ */
+export async function syncCommentToSupabase(
+  supabaseClient: unknown,
+  comment: PostComment
+): Promise<SupabaseSyncResult> {
+  if (!supabaseClient || typeof supabaseClient !== "object") {
+    return { success: false, error: "Supabase client not provided" };
+  }
+
+  try {
+    let resolvedUserId = isValidUuid(comment.userId) ? comment.userId : undefined;
+    if (!resolvedUserId) {
+      try {
+        const authClient = supabaseClient as {
+          auth?: { getUser?: () => Promise<{ data?: { user?: { id?: string } } }> };
+        };
+        if (typeof authClient.auth?.getUser === "function") {
+          const { data: authData } = await authClient.auth.getUser();
+          const authId = authData?.user?.id;
+          if (authId && isValidUuid(authId)) {
+            resolvedUserId = authId;
+          }
+        }
+      } catch (authErr) {
+        console.warn("Failed to retrieve auth user id for comment sync:", authErr);
+      }
+    }
+
+    const payload: Record<string, unknown> = {
+      id: comment.id,
+      post_id: comment.postId,
+      author: comment.author,
+      parish: comment.parish,
+      role: comment.role,
+      content: comment.content,
+      created_at: comment.createdAt || new Date().toISOString(),
+    };
+    if (resolvedUserId) {
+      payload.user_id = resolvedUserId;
+    }
+
+    const client = supabaseClient as {
+      from: (table: string) => {
+        insert: (data: unknown[]) => Promise<{ data: unknown; error: unknown }>;
+      };
+    };
+
+    const { data, error } = await client.from("comments").insert([payload]);
+    if (error) {
+      console.warn("Supabase comment insert error:", error);
+      return { success: false, error };
+    }
+
+    return { success: true, data, userId: resolvedUserId };
+  } catch (err) {
+    console.warn("Supabase comment sync exception:", err);
+    return { success: false, error: err };
+  }
+}
+
+/**
+ * Supabase 원격 comments 테이블에서 댓글 목록 조회
+ */
+export async function fetchCommentsFromSupabase(
+  supabaseClient: unknown,
+  postId?: string
+): Promise<Record<string, PostComment[]>> {
+  if (!supabaseClient || typeof supabaseClient !== "object") return {};
+
+  try {
+    interface SupabaseCommentRow {
+      id: string;
+      post_id: string;
+      user_id?: string | null;
+      author?: string | null;
+      parish?: string | null;
+      role?: string | null;
+      content: string;
+      created_at?: string | null;
+    }
+
+    const client = supabaseClient as {
+      from: (table: string) => {
+        select: (cols: string) => {
+          order: (
+            col: string,
+            opts: { ascending: boolean }
+          ) => {
+            eq?: (col: string, val: string) => Promise<{ data: SupabaseCommentRow[] | null; error: unknown }>;
+            then?: Promise<{ data: SupabaseCommentRow[] | null; error: unknown }>["then"];
+          };
+        };
+      };
+    };
+
+    const queryObj = client.from("comments").select("*").order("created_at", { ascending: true });
+    let res: { data: SupabaseCommentRow[] | null; error: unknown };
+
+    if (postId && typeof queryObj.eq === "function") {
+      res = await queryObj.eq("post_id", postId);
+    } else {
+      res = await (queryObj as PromiseLike<{ data: SupabaseCommentRow[] | null; error: unknown }>);
+    }
+
+    if (res.error || !Array.isArray(res.data)) {
+      console.warn("Failed to fetch comments from Supabase:", res.error);
+      return {};
+    }
+
+    const map: Record<string, PostComment[]> = {};
+    for (const row of res.data) {
+      if (!map[row.post_id]) {
+        map[row.post_id] = [];
+      }
+      map[row.post_id].push({
+        id: row.id,
+        postId: row.post_id,
+        userId: row.user_id || undefined,
+        author: row.author || "순례자",
+        parish: row.parish || "부산",
+        role: row.role || "청년",
+        content: row.content,
+        createdAt: row.created_at || new Date().toISOString(),
+      });
+    }
+
+    return map;
+  } catch (err) {
+    console.warn("Exception during fetchCommentsFromSupabase:", err);
+    return {};
+  }
+}
+
+/**
+ * Supabase 원격 comments 테이블에서 댓글 삭제
+ */
+export async function deleteCommentFromSupabase(
+  supabaseClient: unknown,
+  commentId: string
+): Promise<SupabaseSyncResult> {
+  if (!supabaseClient || typeof supabaseClient !== "object" || !commentId) {
+    return { success: false, error: "Supabase client or commentId not provided" };
+  }
+
+  try {
+    const client = supabaseClient as {
+      from: (table: string) => {
+        delete: () => {
+          eq: (col: string, val: string) => Promise<{ data: unknown; error: unknown }>;
+        };
+      };
+    };
+
+    const { data, error } = await client.from("comments").delete().eq("id", commentId);
+    if (error) {
+      console.warn("Supabase comment delete error:", error);
+      return { success: false, error };
+    }
+
+    return { success: true, data };
+  } catch (err) {
+    console.warn("Supabase comment delete exception:", err);
+    return { success: false, error: err };
+  }
 }
 

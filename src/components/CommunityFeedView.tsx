@@ -42,6 +42,12 @@ import {
   cacheComments,
   removeCommentsForDeletedPosts,
   formatTimeAgo,
+  isCommentAuthor,
+  deleteComment,
+  deleteCommentFromSupabase,
+  syncCommentToSupabase,
+  fetchCommentsFromSupabase,
+  generateUuid,
 } from "@/lib/communityPosts";
 import { optimizeImage, isSupportedMediaType, isVideoFile, resolveEffectiveMimeType } from "@/lib/imageOptimizer";
 import {
@@ -274,6 +280,26 @@ export function CommunityFeedView() {
             return merged;
           });
         }
+
+        const remoteComments = await fetchCommentsFromSupabase(supabase);
+        if (remoteComments && Object.keys(remoteComments).length > 0) {
+          setCommentsMap((prev) => {
+            const merged: Record<string, PostComment[]> = { ...prev };
+            for (const [pId, list] of Object.entries(remoteComments)) {
+              const existing = merged[pId] || [];
+              const mapById = new Map<string, PostComment>();
+              for (const item of existing) {
+                mapById.set(item.id, item);
+              }
+              for (const item of list) {
+                mapById.set(item.id, item);
+              }
+              merged[pId] = Array.from(mapById.values());
+            }
+            cacheComments(merged);
+            return merged;
+          });
+        }
       } catch (err) {
         console.warn("Supabase initial sync skipped (using cached/fallback):", err);
       }
@@ -353,19 +379,20 @@ export function CommunityFeedView() {
     });
   };
 
-  const handleCommentSubmit = (postId: string, e?: React.FormEvent) => {
+  const handleCommentSubmit = async (postId: string, e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const text = (commentInputTexts[postId] || "").trim();
     if (!text) return;
 
     const newComment: PostComment = {
-      id: `comment-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      id: generateUuid(),
       postId,
       author: user?.name || "참가 청년",
       parish: user?.parish || "부산",
       role: user?.role || "청년",
       content: text,
       createdAt: new Date().toISOString(),
+      userId: user?.id || undefined,
     };
 
     setCommentsMap((prev) => {
@@ -382,6 +409,33 @@ export function CommunityFeedView() {
       ...prev,
       [postId]: "",
     }));
+
+    try {
+      const supabase = createClient();
+      await syncCommentToSupabase(supabase, newComment);
+    } catch (err) {
+      console.warn("Failed to sync comment to Supabase:", err);
+    }
+  };
+
+  const handleDeleteComment = async (postId: string, commentId: string) => {
+    if (!window.confirm("댓글을 삭제하시겠습니까?")) return;
+
+    setCommentsMap((prev) => {
+      const updated = deleteComment(prev, postId, commentId);
+      cacheComments(updated);
+      return updated;
+    });
+
+    try {
+      const supabase = createClient();
+      const res = await deleteCommentFromSupabase(supabase, commentId);
+      if (!res.success) {
+        console.warn("Supabase comment delete returned unsuccessful:", res.error);
+      }
+    } catch (err) {
+      console.warn("Failed to delete comment from Supabase:", err);
+    }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -845,12 +899,22 @@ export function CommunityFeedView() {
                       )}
 
                       {(isCommentsOpen ? postComments : postComments.slice(-2)).map((c) => (
-                        <div key={c.id} className="text-xs text-slate-700 flex items-start space-x-1.5 leading-snug">
+                        <div key={c.id} className="text-xs text-slate-700 flex items-start space-x-1.5 leading-snug group/comment">
                           <span className="font-bold text-slate-900 shrink-0">{c.author}:</span>
                           <span className="text-slate-700 break-all">{c.content}</span>
-                          <span className="text-[10px] text-slate-400 shrink-0 ml-auto">
+                          <span className="text-[10px] text-slate-400 shrink-0 ml-auto whitespace-nowrap">
                             {formatTimeAgo(c.createdAt)}
                           </span>
+                          {isCommentAuthor(c, user?.id, user?.name) && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteComment(post.id, c.id)}
+                              className="text-[10px] text-red-500 hover:text-red-700 shrink-0 ml-1 font-semibold hover:underline"
+                              title="댓글 삭제"
+                            >
+                              삭제
+                            </button>
+                          )}
                         </div>
                       ))}
                     </div>
