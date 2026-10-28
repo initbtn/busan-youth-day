@@ -182,12 +182,170 @@ export interface SupabaseSyncResult {
   isSynced?: boolean;
 }
 
+/**
+ * Next.js BFF 게이트웨이(/api/posts)를 통한 게시글 목록 조회
+ */
+export async function fetchPostsViaGateway(): Promise<CommunityPost[]> {
+  try {
+    const res = await fetch("/api/posts", { method: "GET" });
+    if (!res.ok) {
+      console.warn("fetchPostsViaGateway failed with status:", res.status);
+      return [];
+    }
+    const json = await res.json();
+    if (!Array.isArray(json?.posts)) return [];
+    return json.posts.map((row: SupabasePostRow) => ({
+      id: row.id,
+      author: row.author || "순례자",
+      parish: row.parish || "부산",
+      role: row.role || "청년",
+      content: row.content,
+      imageUrl: row.image_url || undefined,
+      mediaUrls: Array.isArray(row.media_urls) && row.media_urls.length > 0 ? row.media_urls : undefined,
+      likes: typeof row.likes === "number" ? row.likes : 0,
+      timeAgo: formatTimeAgo(row.created_at || undefined),
+      createdAt: row.created_at || undefined,
+      userId: row.user_id || undefined,
+      isLiked: false,
+      isSynced: true,
+    }));
+  } catch (err) {
+    console.warn("fetchPostsViaGateway network error:", err);
+    return [];
+  }
+}
+
+/**
+ * Next.js BFF 게이트웨이(/api/posts)를 통한 신규 게시글 동기화 등록
+ */
+export async function syncPostViaGateway(post: CommunityPost): Promise<SupabaseSyncResult> {
+  try {
+    const res = await fetch("/api/posts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(post),
+    });
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      return { success: false, error: errJson.error || `HTTP ${res.status}` };
+    }
+    const json = await res.json();
+    return { success: true, data: json.post, userId: json.userId, isSynced: true };
+  } catch (err) {
+    console.warn("syncPostViaGateway network error:", err);
+    return { success: false, error: err };
+  }
+}
+
+/**
+ * Next.js BFF 게이트웨이(/api/posts/[id])를 통한 게시글 삭제
+ */
+export async function deletePostViaGateway(postId: string): Promise<SupabaseSyncResult> {
+  try {
+    const res = await fetch(`/api/posts/${encodeURIComponent(postId)}`, {
+      method: "DELETE",
+    });
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      return { success: false, error: errJson.error || `HTTP ${res.status}` };
+    }
+    return { success: true };
+  } catch (err) {
+    console.warn("deletePostViaGateway network error:", err);
+    return { success: false, error: err };
+  }
+}
+
+/**
+ * Next.js BFF 게이트웨이(/api/posts/[id])를 통한 게시글 수정
+ */
+export async function updatePostViaGateway(
+  postId: string,
+  changes: Partial<Pick<CommunityPost, "content" | "imageUrl" | "mediaUrls">>
+): Promise<SupabaseSyncResult> {
+  try {
+    const res = await fetch(`/api/posts/${encodeURIComponent(postId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(changes),
+    });
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      return { success: false, error: errJson.error || `HTTP ${res.status}` };
+    }
+    return { success: true };
+  } catch (err) {
+    console.warn("updatePostViaGateway network error:", err);
+    return { success: false, error: err };
+  }
+}
+
+/**
+ * Next.js BFF 게이트웨이(/api/comments)를 통한 댓글 목록 조회
+ */
+export async function fetchCommentsViaGateway(postId?: string): Promise<Record<string, PostComment[]>> {
+  try {
+    const url = postId ? `/api/comments?postId=${encodeURIComponent(postId)}` : "/api/comments";
+    const res = await fetch(url, { method: "GET" });
+    if (!res.ok) {
+      console.warn("fetchCommentsViaGateway failed with status:", res.status);
+      return {};
+    }
+    const json = await res.json();
+    return json.commentsMap || {};
+  } catch (err) {
+    console.warn("fetchCommentsViaGateway network error:", err);
+    return {};
+  }
+}
+
+/**
+ * Next.js BFF 게이트웨이(/api/comments)를 통한 댓글 작성 동기화
+ */
+export async function syncCommentViaGateway(comment: PostComment): Promise<SupabaseSyncResult> {
+  try {
+    const res = await fetch("/api/comments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(comment),
+    });
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      return { success: false, error: errJson.error || `HTTP ${res.status}` };
+    }
+    const json = await res.json();
+    return { success: true, data: json.comment, userId: json.userId };
+  } catch (err) {
+    console.warn("syncCommentViaGateway network error:", err);
+    return { success: false, error: err };
+  }
+}
+
+/**
+ * Next.js BFF 게이트웨이(/api/comments)를 통한 댓글 삭제
+ */
+export async function deleteCommentViaGateway(commentId: string): Promise<SupabaseSyncResult> {
+  try {
+    const res = await fetch(`/api/comments?id=${encodeURIComponent(commentId)}`, {
+      method: "DELETE",
+    });
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      return { success: false, error: errJson.error || `HTTP ${res.status}` };
+    }
+    return { success: true };
+  } catch (err) {
+    console.warn("deleteCommentViaGateway network error:", err);
+    return { success: false, error: err };
+  }
+}
+
 export async function syncPostToSupabase(
   supabaseClient: unknown,
   post: CommunityPost
 ): Promise<SupabaseSyncResult> {
   if (!supabaseClient || typeof supabaseClient !== "object") {
-    return { success: false, error: "Supabase client not provided" };
+    return syncPostViaGateway(post);
   }
 
   try {
@@ -260,8 +418,10 @@ export async function syncPostToSupabase(
   }
 }
 
-export async function fetchPostsFromSupabase(supabaseClient: unknown): Promise<CommunityPost[]> {
-  if (!supabaseClient || typeof supabaseClient !== "object") return [];
+export async function fetchPostsFromSupabase(supabaseClient?: unknown): Promise<CommunityPost[]> {
+  if (!supabaseClient || typeof supabaseClient !== "object") {
+    return fetchPostsViaGateway();
+  }
 
   try {
     const client = supabaseClient as {
@@ -311,8 +471,8 @@ export async function deletePostFromSupabase(
   supabaseClient: unknown,
   postId: string
 ): Promise<SupabaseSyncResult> {
-  if (!supabaseClient || typeof supabaseClient !== "object" || !postId) {
-    return { success: false, error: "Supabase client or postId not provided" };
+  if (!supabaseClient || typeof supabaseClient !== "object") {
+    return deletePostViaGateway(postId);
   }
 
   try {
@@ -342,8 +502,8 @@ export async function updatePostInSupabase(
   postId: string,
   changes: Partial<Pick<CommunityPost, "content" | "imageUrl" | "mediaUrls">>
 ): Promise<SupabaseSyncResult> {
-  if (!supabaseClient || typeof supabaseClient !== "object" || !postId) {
-    return { success: false, error: "Supabase client or postId not provided" };
+  if (!supabaseClient || typeof supabaseClient !== "object") {
+    return updatePostViaGateway(postId, changes);
   }
 
   try {
@@ -641,7 +801,7 @@ export async function syncCommentToSupabase(
   comment: PostComment
 ): Promise<SupabaseSyncResult> {
   if (!supabaseClient || typeof supabaseClient !== "object") {
-    return { success: false, error: "Supabase client not provided" };
+    return syncCommentViaGateway(comment);
   }
 
   try {
@@ -702,7 +862,9 @@ export async function fetchCommentsFromSupabase(
   supabaseClient: unknown,
   postId?: string
 ): Promise<Record<string, PostComment[]>> {
-  if (!supabaseClient || typeof supabaseClient !== "object") return {};
+  if (!supabaseClient || typeof supabaseClient !== "object") {
+    return fetchCommentsViaGateway(postId);
+  }
 
   try {
     interface SupabaseCommentRow {
@@ -775,8 +937,8 @@ export async function deleteCommentFromSupabase(
   supabaseClient: unknown,
   commentId: string
 ): Promise<SupabaseSyncResult> {
-  if (!supabaseClient || typeof supabaseClient !== "object" || !commentId) {
-    return { success: false, error: "Supabase client or commentId not provided" };
+  if (!supabaseClient || typeof supabaseClient !== "object") {
+    return deleteCommentViaGateway(commentId);
   }
 
   try {
